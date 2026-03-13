@@ -73,7 +73,7 @@ local function UpdateSortIndicators()
         if col.sortable and headerLabels[ci] then
             local arrow = ""
             if sortField == col.key then
-                arrow = sortAsc and " \226\150\178" or " \226\150\188" -- ▲ or ▼
+                arrow = sortAsc and " ^" or " v"
             end
             headerLabels[ci]:SetText(col.label .. arrow)
         end

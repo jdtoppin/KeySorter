@@ -252,7 +252,7 @@ function KS.CreateDropdown(parent, width, height)
 
     local arrow = dd:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     arrow:SetPoint("RIGHT", -6, 0)
-    arrow:SetText("|cffaaaaaa\226\150\188|r")
+    arrow:SetText("|cffaaaaaav|r")
 
     dd._items = {}
     dd._selectedValue = nil
