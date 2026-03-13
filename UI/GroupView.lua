@@ -29,12 +29,12 @@ local function GetGroupUtilityString(group)
     if KS.GroupHasUtility(group, "hasBrez") then
         table.insert(parts, "|cff00cc00BR|r")
     else
-        table.insert(parts, "|cff660000BR|r")
+        table.insert(parts, "|cffcc0000BR|r")
     end
     if KS.GroupHasUtility(group, "hasLust") then
-        table.insert(parts, "|cffcc0000BL|r")
+        table.insert(parts, "|cff00cc00BL|r")
     else
-        table.insert(parts, "|cff660000BL|r")
+        table.insert(parts, "|cffcc0000BL|r")
     end
     return table.concat(parts, " ")
 end
