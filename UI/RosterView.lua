@@ -83,6 +83,7 @@ local function CreateRow(parent, index)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
     row:SetPoint("TOPRIGHT", 0, -(index - 1) * ROW_HEIGHT)
 
+    -- Alternating row background
     local highlight = row:CreateTexture(nil, "BACKGROUND")
     highlight:SetAllPoints()
     if index % 2 == 0 then
@@ -91,6 +92,7 @@ local function CreateRow(parent, index)
         highlight:SetColorTexture(1, 1, 1, 0.05)
     end
 
+    -- Mouseover highlight
     local hoverTex = row:CreateTexture(nil, "BACKGROUND", nil, 1)
     hoverTex:SetAllPoints()
     hoverTex:SetColorTexture(1, 1, 1, 0.1)
@@ -117,6 +119,7 @@ local function CreateRow(parent, index)
         row.texts[ci] = fs
     end
 
+    -- Role icon
     row.roleIcon = row:CreateTexture(nil, "OVERLAY")
     row.roleIcon:SetSize(14, 14)
     row.roleIcon:SetPoint("CENTER", row.texts[2], "CENTER", 0, 0)
@@ -154,14 +157,13 @@ function KS.CreateRosterView(parent)
     end
 
     -- Column headers
-    local headerBar = CreateFrame("Frame", nil, parent)
+    local headerBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     headerBar:SetPoint("TOPLEFT", 0, -FILTER_HEIGHT)
     headerBar:SetPoint("TOPRIGHT", 0, -FILTER_HEIGHT)
     headerBar:SetHeight(HEADER_HEIGHT)
-
-    local headerBg = headerBar:CreateTexture(nil, "BACKGROUND")
-    headerBg:SetAllPoints()
-    headerBg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
+    headerBar:SetBackdrop(KS.BACKDROP_PANEL)
+    headerBar:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
+    headerBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
 
     for ci, col in ipairs(COLUMNS) do
         local sortable = col.key ~= "utilities" and col.key ~= "role"
@@ -186,19 +188,11 @@ function KS.CreateRosterView(parent)
         end
     end
 
-    -- Scroll frame
-    scrollFrame = CreateFrame("ScrollFrame", "KeySorterRosterScroll", parent, "UIPanelScrollFrameTemplate")
+    -- Custom scroll frame (clean thin scrollbar)
+    scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterRosterScroll")
+    scrollFrame:ClearAllPoints()
     scrollFrame:SetPoint("TOPLEFT", 0, -(FILTER_HEIGHT + HEADER_HEIGHT))
-    scrollFrame:SetPoint("BOTTOMRIGHT", -24, 0)
-
-    scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetWidth(scrollFrame:GetWidth())
-    scrollChild:SetHeight(1)
-    scrollFrame:SetScrollChild(scrollChild)
-
-    scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
-        scrollChild:SetWidth(w)
-    end)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
 
     filterIdx = KeySorterDB.filterIdx or 1
     UpdateFilterHighlights()
@@ -207,10 +201,12 @@ end
 function KS.UpdateRosterView()
     if not scrollChild then return end
 
+    -- Hide existing rows
     for _, row in ipairs(rows) do
         row:Hide()
     end
 
+    -- Filter and sort roster
     local filtered = {}
     for _, member in ipairs(KS.roster) do
         if PassesFilter(member) then
@@ -219,6 +215,7 @@ function KS.UpdateRosterView()
     end
     table.sort(filtered, CompareMembers)
 
+    -- Create/update rows
     for i, member in ipairs(filtered) do
         if not rows[i] then
             rows[i] = CreateRow(scrollChild, i)

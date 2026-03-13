@@ -13,19 +13,24 @@ local COLORS = {
     dark        = { n = {0.12, 0.12, 0.12, 0.9}, h = {0.18, 0.18, 0.18, 0.95} },
 }
 
+-- Squared 1px border backdrop (modern flat look)
 local BACKDROP_BUTTON = {
-    bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 12,
-    insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    bgFile = "Interface/BUTTONS/WHITE8X8",
+    edgeFile = "Interface/BUTTONS/WHITE8X8",
+    tile = false, edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
 }
 
 local BACKDROP_PANEL = {
-    bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 16,
-    insets = { left = 4, right = 4, top = 4, bottom = 4 },
+    bgFile = "Interface/BUTTONS/WHITE8X8",
+    edgeFile = "Interface/BUTTONS/WHITE8X8",
+    tile = false, edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
 }
+
+-- Expose for reuse by UI files
+KS.BACKDROP_BUTTON = BACKDROP_BUTTON
+KS.BACKDROP_PANEL = BACKDROP_PANEL
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -51,7 +56,7 @@ function KS.CreateButton(parent, text, colorName, width, height)
 
     btn:SetBackdrop(BACKDROP_BUTTON)
     btn:SetBackdropColor(unpack(c.n))
-    btn:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+    btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     local label = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     label:SetPoint("CENTER", 0, 0)
@@ -61,12 +66,12 @@ function KS.CreateButton(parent, text, colorName, width, height)
     -- Hover effect
     btn:SetScript("OnEnter", function(self)
         self:SetBackdropColor(unpack(c.h))
-        self:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+        self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
     end)
     btn:SetScript("OnLeave", function(self)
         if not self._locked then
             self:SetBackdropColor(unpack(c.n))
-            self:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+            self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
         end
     end)
 
@@ -100,13 +105,13 @@ function KS.CreateButton(parent, text, colorName, width, height)
     function btn:LockHighlight()
         self._locked = true
         self:SetBackdropColor(unpack(c.h))
-        self:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+        self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
     end
 
     function btn:UnlockHighlight()
         self._locked = false
         self:SetBackdropColor(unpack(c.n))
-        self:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+        self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     end
 
     function btn:SetEnabled(enabled)
@@ -125,6 +130,115 @@ function KS.CreateButton(parent, text, colorName, width, height)
 end
 
 ---------------------------------------------------------------------------
+-- Scroll Frame (clean, minimal thumb, no arrows)
+---------------------------------------------------------------------------
+-- KS.CreateScrollFrame(parent)
+-- Returns scrollFrame, scrollChild
+function KS.CreateScrollFrame(parent, name)
+    local scrollFrame = CreateFrame("ScrollFrame", name, parent)
+    scrollFrame:SetPoint("TOPLEFT", 0, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
+
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollChild:SetWidth(scrollFrame:GetWidth())
+    scrollChild:SetHeight(1)
+    scrollFrame:SetScrollChild(scrollChild)
+
+    -- Thin scroll track
+    local track = CreateFrame("Frame", nil, scrollFrame, "BackdropTemplate")
+    track:SetWidth(6)
+    track:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -2, 0)
+    track:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -2, 0)
+    track:SetBackdrop(BACKDROP_BUTTON)
+    track:SetBackdropColor(0.1, 0.1, 0.1, 0.5)
+    track:SetBackdropBorderColor(0.2, 0.2, 0.2, 0.5)
+
+    -- Scroll thumb
+    local thumb = CreateFrame("Frame", nil, track, "BackdropTemplate")
+    thumb:SetWidth(6)
+    thumb:SetHeight(30)
+    thumb:SetBackdrop(BACKDROP_BUTTON)
+    thumb:SetBackdropColor(0.4, 0.4, 0.4, 0.8)
+    thumb:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    thumb:EnableMouse(true)
+    thumb:SetPoint("TOP", track, "TOP", 0, 0)
+    scrollFrame._thumb = thumb
+    scrollFrame._track = track
+
+    -- Hover effect on thumb
+    thumb:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0.5, 0.5, 0.5, 1)
+    end)
+    thumb:SetScript("OnLeave", function(self)
+        if not self._dragging then
+            self:SetBackdropColor(0.4, 0.4, 0.4, 0.8)
+        end
+    end)
+
+    -- Drag to scroll
+    thumb:RegisterForDrag("LeftButton")
+    thumb:SetScript("OnDragStart", function(self)
+        self._dragging = true
+        self._startY = select(2, GetCursorPosition()) / self:GetEffectiveScale()
+        self._startScroll = scrollFrame:GetVerticalScroll()
+    end)
+    thumb:SetScript("OnDragStop", function(self)
+        self._dragging = false
+        if not self:IsMouseOver() then
+            self:SetBackdropColor(0.4, 0.4, 0.4, 0.8)
+        end
+    end)
+    thumb:SetScript("OnUpdate", function(self)
+        if not self._dragging then return end
+        local curY = select(2, GetCursorPosition()) / self:GetEffectiveScale()
+        local delta = self._startY - curY
+        local trackHeight = track:GetHeight()
+        local thumbHeight = self:GetHeight()
+        local scrollRange = scrollFrame:GetVerticalScrollRange()
+        if trackHeight - thumbHeight > 0 then
+            local scroll = self._startScroll + (delta / (trackHeight - thumbHeight)) * scrollRange
+            scrollFrame:SetVerticalScroll(math.max(0, math.min(scroll, scrollRange)))
+        end
+    end)
+
+    -- Mouse wheel scrolling
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheelScroll", function(self, delta)
+        local scroll = self:GetVerticalScroll() - (delta * 20)
+        self:SetVerticalScroll(math.max(0, math.min(scroll, self:GetVerticalScrollRange())))
+    end)
+
+    -- Update thumb position/size on scroll
+    local function UpdateThumb()
+        local scrollRange = scrollFrame:GetVerticalScrollRange()
+        if scrollRange <= 0 then
+            thumb:Hide()
+            return
+        end
+        thumb:Show()
+        local trackHeight = track:GetHeight()
+        local childHeight = scrollChild:GetHeight()
+        local visibleRatio = scrollFrame:GetHeight() / math.max(childHeight, 1)
+        local thumbHeight = math.max(20, trackHeight * math.min(visibleRatio, 1))
+        thumb:SetHeight(thumbHeight)
+
+        local scrollPos = scrollFrame:GetVerticalScroll()
+        local thumbOffset = (scrollPos / scrollRange) * (trackHeight - thumbHeight)
+        thumb:ClearAllPoints()
+        thumb:SetPoint("TOP", track, "TOP", 0, -thumbOffset)
+    end
+
+    scrollFrame:SetScript("OnScrollRangeChanged", function() UpdateThumb() end)
+    scrollFrame:SetScript("OnVerticalScroll", function() UpdateThumb() end)
+    scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
+        scrollChild:SetWidth(w)
+        UpdateThumb()
+    end)
+
+    return scrollFrame, scrollChild
+end
+
+---------------------------------------------------------------------------
 -- Dropdown
 ---------------------------------------------------------------------------
 -- KS.CreateDropdown(parent, width, height)
@@ -138,7 +252,7 @@ function KS.CreateDropdown(parent, width, height)
 
     dd:SetBackdrop(BACKDROP_BUTTON)
     dd:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
-    dd:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+    dd:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     local label = dd:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     label:SetPoint("LEFT", 6, 0)
@@ -147,12 +261,10 @@ function KS.CreateDropdown(parent, width, height)
     label:SetText("Select...")
     dd._label = label
 
-    -- Arrow
-    local arrow = dd:CreateTexture(nil, "OVERLAY")
-    arrow:SetSize(12, 12)
-    arrow:SetPoint("RIGHT", -4, 0)
-    arrow:SetTexture("Interface/Buttons/UI-SortArrow")
-    arrow:SetTexCoord(0, 0.5625, 1, 0) -- down arrow
+    -- Down arrow (simple triangle via font)
+    local arrow = dd:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    arrow:SetPoint("RIGHT", -6, 0)
+    arrow:SetText("|cffaaaaaa\226\150\188|r") -- ▼ unicode
 
     dd._items = {}
     dd._selectedValue = nil
@@ -163,7 +275,7 @@ function KS.CreateDropdown(parent, width, height)
     menu:SetFrameStrata("DIALOG")
     menu:SetBackdrop(BACKDROP_PANEL)
     menu:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
-    menu:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    menu:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     menu:Hide()
     dd._menu = menu
 
@@ -175,26 +287,32 @@ function KS.CreateDropdown(parent, width, height)
     end
 
     local function BuildMenu()
-        -- Hide existing
         for _, mb in ipairs(menuButtons) do
             mb:Hide()
         end
 
         local itemHeight = 20
         local count = #dd._items
-        menu:SetSize(width, count * itemHeight + 8)
-        menu:SetPoint("TOP", dd, "BOTTOM", 0, -2)
+        menu:SetSize(width, count * itemHeight + 4)
+        menu:SetPoint("TOP", dd, "BOTTOM", 0, -1)
 
         for i, item in ipairs(dd._items) do
             if not menuButtons[i] then
-                local mb = CreateFrame("Button", nil, menu)
+                local mb = CreateFrame("Button", nil, menu, "BackdropTemplate")
                 mb:SetHeight(itemHeight)
-                mb:SetPoint("TOPLEFT", 4, -(i - 1) * itemHeight - 4)
-                mb:SetPoint("TOPRIGHT", -4, -(i - 1) * itemHeight - 4)
+                mb:SetPoint("TOPLEFT", 2, -(i - 1) * itemHeight - 2)
+                mb:SetPoint("TOPRIGHT", -2, -(i - 1) * itemHeight - 2)
 
-                local hl = mb:CreateTexture(nil, "HIGHLIGHT")
-                hl:SetAllPoints()
-                hl:SetColorTexture(0, 0.5, 0.8, 0.3)
+                -- Hover highlight
+                mb:SetBackdrop(BACKDROP_BUTTON)
+                mb:SetBackdropColor(0, 0, 0, 0)
+                mb:SetBackdropBorderColor(0, 0, 0, 0)
+                mb:SetScript("OnEnter", function(self)
+                    self:SetBackdropColor(0, 0.5, 0.8, 0.3)
+                end)
+                mb:SetScript("OnLeave", function(self)
+                    self:SetBackdropColor(0, 0, 0, 0)
+                end)
 
                 local txt = mb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
                 txt:SetPoint("LEFT", 4, 0)
@@ -218,6 +336,14 @@ function KS.CreateDropdown(parent, width, height)
         end
     end
 
+    -- Hover effect on dropdown itself
+    dd:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    end)
+    dd:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    end)
+
     dd:SetScript("OnMouseDown", function()
         if menu:IsShown() then
             CloseMenu()
@@ -227,13 +353,7 @@ function KS.CreateDropdown(parent, width, height)
         end
     end)
 
-    -- Close menu when clicking elsewhere
-    menu:SetScript("OnShow", function()
-        menu:SetPropagateKeyboardInput(true)
-    end)
-    menu:SetScript("OnHide", function() end)
-
-    -- Close on escape or clicking away
+    -- Click-away closer
     local closer = CreateFrame("Button", nil, menu)
     closer:SetAllPoints(UIParent)
     closer:SetFrameLevel(menu:GetFrameLevel() - 1)

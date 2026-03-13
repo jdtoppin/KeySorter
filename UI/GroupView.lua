@@ -45,6 +45,7 @@ local function CreateMemberLine(parent, yOffset, label, member)
     line:SetPoint("TOPRIGHT", -8, yOffset)
     line:SetHeight(MEMBER_HEIGHT)
 
+    -- Role icon
     local roleAtlas = KS.ROLE_ICONS[label]
     if roleAtlas then
         local icon = line:CreateTexture(nil, "OVERLAY")
@@ -53,6 +54,7 @@ local function CreateMemberLine(parent, yOffset, label, member)
         icon:SetAtlas(roleAtlas)
     end
 
+    -- Name + score
     local nameText = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     nameText:SetPoint("LEFT", 18, 0)
     nameText:SetText(GetClassColoredName(member) .. " " .. GetScoreString(member))
@@ -61,18 +63,14 @@ local function CreateMemberLine(parent, yOffset, label, member)
 end
 
 local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
+    -- Squared card with flat border
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     card:SetSize(CARD_WIDTH, CARD_HEIGHT)
     card:SetPoint("TOPLEFT", xOffset, yOffset)
 
-    card:SetBackdrop({
-        bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 12,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    card:SetBackdropColor(0.15, 0.15, 0.15, 0.95)
-    card:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    card:SetBackdrop(KS.BACKDROP_PANEL)
+    card:SetBackdropColor(0.12, 0.12, 0.12, 0.95)
+    card:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     -- Group header
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -120,14 +118,9 @@ local function CreateUnassignedSection(parent, yOffset)
     card:SetPoint("RIGHT", -CARD_PADDING, 0)
     card:SetHeight(height)
 
-    card:SetBackdrop({
-        bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 12,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    card:SetBackdropColor(0.2, 0.15, 0.1, 0.95)
-    card:SetBackdropBorderColor(0.6, 0.4, 0.2, 1)
+    card:SetBackdrop(KS.BACKDROP_PANEL)
+    card:SetBackdropColor(0.15, 0.1, 0.05, 0.95)
+    card:SetBackdropBorderColor(0.5, 0.35, 0.15, 1)
 
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 8, -6)
@@ -144,23 +137,14 @@ local function CreateUnassignedSection(parent, yOffset)
 end
 
 function KS.CreateGroupView(parent)
-    scrollFrame = CreateFrame("ScrollFrame", "KeySorterGroupScroll", parent, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -24, 0)
-
-    scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetWidth(scrollFrame:GetWidth())
-    scrollChild:SetHeight(1)
-    scrollFrame:SetScrollChild(scrollChild)
-
-    scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
-        scrollChild:SetWidth(w)
-    end)
+    -- Custom scroll frame (clean thin scrollbar)
+    scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterGroupScroll")
 end
 
 function KS.UpdateGroupView()
     if not scrollChild then return end
 
+    -- Clear existing cards
     for _, card in ipairs(groupCards) do
         card:Hide()
         card:SetParent(nil)
@@ -187,6 +171,7 @@ function KS.UpdateGroupView()
         return
     end
 
+    -- Layout cards in a grid (3 per row)
     local cardsPerRow = 3
     local totalWidth = scrollChild:GetWidth()
     if totalWidth < 1 then totalWidth = 650 end
@@ -209,6 +194,7 @@ function KS.UpdateGroupView()
         end
     end
 
+    -- Unassigned section below cards
     local lastRow = math.ceil(#KS.groups / cardsPerRow)
     local unassignedY = yStart - lastRow * (CARD_HEIGHT + CARD_PADDING) - CARD_PADDING
 

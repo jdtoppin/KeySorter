@@ -22,22 +22,18 @@ function KS.CreateAboutFrame()
     aboutFrame:SetClampedToScreen(true)
     aboutFrame:SetPoint("CENTER")
 
-    aboutFrame:SetBackdrop({
-        bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 },
-    })
-    aboutFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
-    aboutFrame:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    -- Squared flat border
+    aboutFrame:SetBackdrop(KS.BACKDROP_PANEL)
+    aboutFrame:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
+    aboutFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     aboutFrame:RegisterForDrag("LeftButton")
     aboutFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     aboutFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
     -- Close
-    local close = KS.CreateButton(aboutFrame, "X", "red", 24, 24)
-    close:SetPoint("TOPRIGHT", -6, -4)
+    local close = KS.CreateButton(aboutFrame, "X", "red", 20, 20)
+    close:SetPoint("TOPRIGHT", -4, -4)
     close:SetOnClick(function() aboutFrame:Hide() end)
 
     -- Title

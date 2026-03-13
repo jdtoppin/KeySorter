@@ -1,6 +1,6 @@
 local addonName, KS = ...
 
-local BUTTON_SIZE = 28
+local BUTTON_SIZE = 32
 local MINIMAP_RADIUS = 80
 
 function KS.CreateMinimapButton()
@@ -13,43 +13,53 @@ function KS.CreateMinimapButton()
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:RegisterForDrag("LeftButton")
 
-    -- Background circle
+    -- Squared background
     local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-    bg:SetPoint("CENTER")
-    bg:SetTexture("Interface/Minimap/UI-Minimap-Background")
-    bg:SetVertexColor(0.1, 0.1, 0.1, 0.8)
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.1, 0.1, 0.1, 0.85)
 
-    -- Border ring
-    local border = btn:CreateTexture(nil, "OVERLAY")
-    border:SetSize(BUTTON_SIZE + 6, BUTTON_SIZE + 6)
-    border:SetPoint("CENTER")
-    border:SetTexture("Interface/Minimap/MiniMap-TrackingBorder")
+    -- Border
+    local border = btn:CreateTexture(nil, "BORDER")
+    border:SetPoint("TOPLEFT", -1, 1)
+    border:SetPoint("BOTTOMRIGHT", 1, -1)
+    border:SetColorTexture(0.3, 0.3, 0.3, 1)
+
+    -- Inner bg (on top of border to create border effect)
+    local inner = btn:CreateTexture(nil, "ARTWORK")
+    inner:SetAllPoints()
+    inner:SetColorTexture(0.1, 0.1, 0.1, 0.85)
 
     -- "KS" text label
-    local label = btn:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("CENTER", 0, 0)
     label:SetText("|cff00ccffKS|r")
 
-    -- Hover highlight
-    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetSize(BUTTON_SIZE, BUTTON_SIZE)
-    highlight:SetPoint("CENTER")
-    highlight:SetTexture("Interface/Minimap/UI-Minimap-ZoomButton-Highlight")
-    highlight:SetBlendMode("ADD")
+    -- Hover effect
+    btn:SetScript("OnEnter", function(self)
+        inner:SetColorTexture(0.15, 0.15, 0.15, 0.95)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:AddLine("KeySorter", 0, 0.8, 1)
+        GameTooltip:AddLine("|cffccccccLeft-click|r toggle window", 0.8, 0.8, 0.8)
+        GameTooltip:AddLine("|cffccccccRight-click|r about", 0.8, 0.8, 0.8)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function(self)
+        inner:SetColorTexture(0.1, 0.1, 0.1, 0.85)
+        GameTooltip:Hide()
+    end)
 
     -- Position around minimap
     local function UpdatePosition()
         local angle = math.rad(KeySorterDB.minimapPos or 225)
         local x = math.cos(angle) * MINIMAP_RADIUS
         local y = math.sin(angle) * MINIMAP_RADIUS
+        btn:ClearAllPoints()
         btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
     end
 
     -- Drag to reposition around minimap
-    local isDragging = false
     btn:SetScript("OnDragStart", function(self)
-        isDragging = true
+        self._dragging = true
         self:SetScript("OnUpdate", function(self)
             local mx, my = Minimap:GetCenter()
             local cx, cy = GetCursorPosition()
@@ -66,7 +76,7 @@ function KS.CreateMinimapButton()
     end)
 
     btn:SetScript("OnDragStop", function(self)
-        isDragging = false
+        self._dragging = false
         self:SetScript("OnUpdate", nil)
     end)
 
@@ -76,18 +86,6 @@ function KS.CreateMinimapButton()
         elseif button == "RightButton" then
             SlashCmdList["KEYSORTER"]("about")
         end
-    end)
-
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine("KeySorter", 0, 0.8, 1)
-        GameTooltip:AddLine("|cffccccccLeft-click|r to toggle window", 0.8, 0.8, 0.8)
-        GameTooltip:AddLine("|cffccccccRight-click|r for about/credits", 0.8, 0.8, 0.8)
-        GameTooltip:Show()
-    end)
-
-    btn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
     end)
 
     UpdatePosition()
