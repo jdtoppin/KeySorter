@@ -43,6 +43,10 @@ function KS.UpdatePermissionState()
     local permitted = KS.IsPermitted()
     if KS.scanButton then KS.scanButton:SetEnabled(permitted) end
     if KS.sortButton then KS.sortButton:SetEnabled(permitted) end
+    if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(permitted) end
+    if KS.applyButton then KS.applyButton:SetEnabled(permitted) end
+    if KS.announceButton then KS.announceButton:SetEnabled(permitted) end
+    if KS.syncButton then KS.syncButton:SetEnabled(permitted) end
 end
 
 local function EnsureMainFrame()
@@ -66,7 +70,8 @@ local function PrintHelp()
     print("  |cff00ff00/ks|r — toggle window")
     print("  |cff00ff00/ks scan|r — scan raid roster")
     print("  |cff00ff00/ks sort|r — sort into groups")
-    print("  |cff00ff00/ks apply|r — move players to subgroups + announce")
+    print("  |cff00ff00/ks apply|r — move players to raid subgroups")
+    print("  |cff00ff00/ks announce|r — post group assignments to raid chat")
     print("  |cff00ff00/ks sync|r — sync groups to assistants")
     print("  |cff00ff00/ks preview|r — toggle preview mode")
     print("  |cff00ff00/ks about|r — credits & license info")
@@ -93,6 +98,8 @@ SlashCmdList["KEYSORTER"] = function(msg)
         KS.UpdatePermissionState()
     elseif cmd == "apply" then
         KS.ApplyGroups()
+    elseif cmd == "announce" then
+        KS.AnnounceGroups()
     elseif cmd == "sync" then
         KS.SendSync()
     elseif cmd == "preview" or cmd == "test" then
@@ -181,12 +188,20 @@ function KS.GeneratePreviewData()
         local runs = {}
         local numTimed = 0
         local numUntimed = 0
+        -- Pick random dungeons from the season pool
+        local shuffled = {}
+        for _, id in ipairs(KS.DUNGEON_IDS) do table.insert(shuffled, id) end
+        for j = #shuffled, 2, -1 do
+            local k = math.random(1, j)
+            shuffled[j], shuffled[k] = shuffled[k], shuffled[j]
+        end
         for r = 1, numRuns do
+            local mapID = shuffled[r] or (r * 100)
             local level = math.random(2, 15)
             totalKeyLevel = totalKeyLevel + level
             local timed = math.random() > 0.3
             if timed then numTimed = numTimed + 1 else numUntimed = numUntimed + 1 end
-            runs[r * 100] = {
+            runs[mapID] = {
                 level = level,
                 timed = timed,
                 score = math.random(50, 300),
@@ -204,6 +219,7 @@ function KS.GeneratePreviewData()
             numRuns = numRuns,
             numTimed = numTimed,
             numUntimed = numUntimed,
+            ilvl = math.random(220, 290),
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,

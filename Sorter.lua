@@ -21,8 +21,11 @@ function KS.SortGroups()
         end
     end
 
-    -- Step 2: Sort each pool by score descending
-    local function byScore(a, b) return a.score > b.score end
+    -- Step 2: Sort each pool by score descending, then ilvl as tiebreaker
+    local function byScore(a, b)
+        if a.score ~= b.score then return a.score > b.score end
+        return (a.ilvl or 0) > (b.ilvl or 0)
+    end
     table.sort(tanks, byScore)
     table.sort(healers, byScore)
     table.sort(dps, byScore)

@@ -17,6 +17,7 @@ local COLUMNS = {
     { key = "name",        label = "Name",    width = 130, align = "LEFT",   sortable = true },
     { key = "role",        label = "Role",    width = 44,  align = "CENTER", sortable = false },
     { key = "score",       label = "Score",   width = 60,  align = "RIGHT",  sortable = true },
+    { key = "ilvl",        label = "iLvl",    width = 44,  align = "RIGHT",  sortable = true },
     { key = "avgKeyLevel", label = "Avg Key", width = 56,  align = "RIGHT",  sortable = true },
     { key = "numTimed",    label = "Timed",   width = 46,  align = "RIGHT",  sortable = true },
     { key = "numUntimed",  label = "Untimed", width = 56,  align = "RIGHT",  sortable = true },
@@ -49,6 +50,34 @@ local function PassesFilter(member)
     return member.score >= thresh.min and member.score <= thresh.max
 end
 
+local function GetIlvlColor(ilvl)
+    local anchors = KS.ILVL_COLORS
+    if not anchors or #anchors == 0 then return 1, 1, 1 end
+
+    -- Clamp below first anchor
+    if ilvl <= anchors[1].ilvl then
+        return anchors[1].r, anchors[1].g, anchors[1].b
+    end
+    -- Clamp above last anchor
+    if ilvl >= anchors[#anchors].ilvl then
+        return anchors[#anchors].r, anchors[#anchors].g, anchors[#anchors].b
+    end
+
+    -- Interpolate between two surrounding anchors
+    for i = 2, #anchors do
+        if ilvl <= anchors[i].ilvl then
+            local lo = anchors[i - 1]
+            local hi = anchors[i]
+            local t = (ilvl - lo.ilvl) / (hi.ilvl - lo.ilvl)
+            return lo.r + t * (hi.r - lo.r),
+                   lo.g + t * (hi.g - lo.g),
+                   lo.b + t * (hi.b - lo.b)
+        end
+    end
+
+    return 1, 1, 1
+end
+
 local function GetScoreColor(score)
     if C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor then
         local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
@@ -60,6 +89,78 @@ local function GetScoreColor(score)
     elseif score >= 1000 then return 0, 0.8, 0
     elseif score >= 500 then return 1, 1, 1
     else return 0.6, 0.6, 0.6 end
+end
+
+-- Resolve dungeon name: try game API first, fall back to Data.lua table
+local function GetDungeonName(mapID)
+    if C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
+        local name = C_ChallengeMode.GetMapUIInfo(mapID)
+        if name then return name end
+    end
+    return KS.DUNGEON_NAMES[mapID] or ("Dungeon " .. mapID)
+end
+
+-- Build the shift-tooltip for a member's per-dungeon breakdown
+local function ShowMemberTooltip(row, member)
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    local classColor = KS.CLASS_COLORS[member.classFile]
+    if classColor then
+        GameTooltip:AddLine(member.name, classColor.r, classColor.g, classColor.b)
+    else
+        GameTooltip:AddLine(member.name, 1, 1, 1)
+    end
+    local ilvlStr = (member.ilvl and member.ilvl > 0) and format("  |  iLvl: %d", member.ilvl) or ""
+    GameTooltip:AddLine(format("Score: %d  |  Avg Key: %.1f%s", member.score, member.avgKeyLevel, ilvlStr), 0.7, 0.7, 0.7)
+    GameTooltip:AddLine(" ")
+
+    if not member.runs or next(member.runs) == nil then
+        GameTooltip:AddLine("No dungeon runs recorded.", 0.5, 0.5, 0.5)
+    else
+        GameTooltip:AddLine("Dungeon Breakdown:", 0, 0.8, 1)
+        -- Show runs in consistent order using the season dungeon list
+        local shown = {}
+        for _, mapID in ipairs(KS.DUNGEON_IDS) do
+            local run = member.runs[mapID]
+            if run then
+                shown[mapID] = true
+                local name = GetDungeonName(mapID)
+                local timedStr
+                if run.timed then
+                    timedStr = "|cff00cc00Timed|r"
+                else
+                    timedStr = "|cffcc0000Untimed|r"
+                end
+                GameTooltip:AddDoubleLine(
+                    format("  %s", name),
+                    format("+%d  %s", run.level, timedStr),
+                    0.8, 0.8, 0.8,
+                    1, 1, 1
+                )
+            end
+        end
+        -- Show any runs with IDs not in the season list
+        for mapID, run in pairs(member.runs) do
+            if not shown[mapID] then
+                local name = GetDungeonName(mapID)
+                local timedStr
+                if run.timed then
+                    timedStr = "|cff00cc00Timed|r"
+                else
+                    timedStr = "|cffcc0000Untimed|r"
+                end
+                GameTooltip:AddDoubleLine(
+                    format("  %s", name),
+                    format("+%d  %s", run.level, timedStr),
+                    0.8, 0.8, 0.8,
+                    1, 1, 1
+                )
+            end
+        end
+    end
+
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Hold Shift to keep open", 0.4, 0.4, 0.4)
+    GameTooltip:Show()
 end
 
 local function GetUtilityString(member)
@@ -110,8 +211,30 @@ local function CreateRow(parent, index)
     hoverTex:SetColorTexture(1, 1, 1, 0.1)
     hoverTex:Hide()
     row:EnableMouse(true)
-    row:SetScript("OnEnter", function() hoverTex:Show() end)
-    row:SetScript("OnLeave", function() hoverTex:Hide() end)
+    row._shiftShown = false
+    row:SetScript("OnEnter", function(self)
+        hoverTex:Show()
+        if IsShiftKeyDown() and self._member then
+            ShowMemberTooltip(self, self._member)
+            self._shiftShown = true
+        end
+    end)
+    row:SetScript("OnLeave", function(self)
+        hoverTex:Hide()
+        GameTooltip:Hide()
+        self._shiftShown = false
+    end)
+    row:SetScript("OnUpdate", function(self)
+        if not self:IsMouseOver() then return end
+        local shiftDown = IsShiftKeyDown()
+        if shiftDown and not self._shiftShown and self._member then
+            ShowMemberTooltip(self, self._member)
+            self._shiftShown = true
+        elseif not shiftDown and self._shiftShown then
+            GameTooltip:Hide()
+            self._shiftShown = false
+        end
+    end)
 
     row.texts = {}
     for ci, col in ipairs(COLUMNS) do
@@ -243,7 +366,7 @@ function KS.CreateRosterView(parent)
     scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterRosterScroll")
     scrollFrame:ClearAllPoints()
     scrollFrame:SetPoint("TOPLEFT", 0, -(TOOLBAR_HEIGHT + HEADER_HEIGHT))
-    scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -14, 0)
 
     filterIdx = KeySorterDB.filterIdx or 1
 end
@@ -254,6 +377,7 @@ function KS.UpdateRosterView()
     -- Hide existing rows
     for _, row in ipairs(rows) do
         row:Hide()
+        row._member = nil
     end
 
     -- Filter and sort roster
@@ -277,6 +401,7 @@ function KS.UpdateRosterView()
         end
         local row = rows[i]
         row:Show()
+        row._member = member
 
         -- Name (class colored)
         local classColor = KS.CLASS_COLORS[member.classFile]
@@ -300,20 +425,29 @@ function KS.UpdateRosterView()
         local sr, sg, sb = GetScoreColor(member.score)
         row.texts[3]:SetText(format("|cff%02x%02x%02x%d|r", sr * 255, sg * 255, sb * 255, member.score))
 
+        -- Item level (colored by quality gradient)
+        local ilvl = member.ilvl or 0
+        if ilvl > 0 then
+            local ir, ig, ib = GetIlvlColor(ilvl)
+            row.texts[4]:SetText(format("|cff%02x%02x%02x%d|r", ir * 255, ig * 255, ib * 255, ilvl))
+        else
+            row.texts[4]:SetText("|cff666666—|r")
+        end
+
         -- Average key level across all dungeons
-        row.texts[4]:SetText(format("%.1f", member.avgKeyLevel))
+        row.texts[5]:SetText(format("%.1f", member.avgKeyLevel))
 
         -- Timed runs
-        row.texts[5]:SetText("|cff00cc00" .. tostring(member.numTimed or 0) .. "|r")
+        row.texts[6]:SetText("|cff00cc00" .. tostring(member.numTimed or 0) .. "|r")
 
         -- Untimed runs
-        row.texts[6]:SetText("|cffcc0000" .. tostring(member.numUntimed or 0) .. "|r")
+        row.texts[7]:SetText("|cffcc0000" .. tostring(member.numUntimed or 0) .. "|r")
 
         -- Total runs
-        row.texts[7]:SetText(tostring(member.numRuns))
+        row.texts[8]:SetText(tostring(member.numRuns))
 
         -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
-        row.texts[8]:SetText(GetUtilityString(member))
+        row.texts[9]:SetText(GetUtilityString(member))
     end
 
     scrollChild:SetHeight(math.max(#filtered * ROW_HEIGHT, 1))

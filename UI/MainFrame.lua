@@ -3,9 +3,9 @@ local addonName, KS = ...
 local FRAME_WIDTH = 700
 local FRAME_HEIGHT = 500
 local TITLEBAR_H = 28
-local TABBAR_Y = -30
-local TAB_H = 22
-local CONTENT_Y = -56
+local TOOLBAR_H = 30
+local CONTENT_Y_NO_TOOLBAR = -(TITLEBAR_H + 2)
+local CONTENT_Y_WITH_TOOLBAR = -(TITLEBAR_H + 2 + TOOLBAR_H)
 
 function KS.CreateMainFrame()
     local f = CreateFrame("Frame", "KeySorterMainFrame", UIParent, "BackdropTemplate")
@@ -47,58 +47,32 @@ function KS.CreateMainFrame()
     title:SetText("KeySorter")
     title:SetTextColor(0, 0.8, 1)
 
-    -- About "?"
-    local aboutBtn = KS.CreateButton(titleBar, "?", "gray_hover", 20, 20)
-    aboutBtn:SetPoint("LEFT", title, "RIGHT", 6, 0)
-    aboutBtn:SetOnClick(function() KS.ToggleAbout() end)
-    KS.AddTooltip(aboutBtn, "About KeySorter", "View credits, license, and command reference.")
-
-    -- Close
+    -- Close button (right edge)
     local close = KS.CreateButton(titleBar, "X", "red", 20, 20)
     close:SetPoint("RIGHT", -4, 0)
     close:SetOnClick(function() f:Hide() end)
 
-    -- Action buttons — all same accent color
-    local syncBtn = KS.CreateButton(titleBar, "Sync", "accent", 52, 20)
-    syncBtn:SetPoint("RIGHT", close, "LEFT", -8, 0)
-    syncBtn:SetOnClick(function() KS.SendSync() end)
-    KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
-
-    local applyBtn = KS.CreateButton(titleBar, "Apply", "accent", 52, 20)
-    applyBtn:SetPoint("RIGHT", syncBtn, "LEFT", -4, 0)
-    applyBtn:SetOnClick(function() KS.ApplyGroups() end)
-    KS.AddTooltip(applyBtn, "Apply Groups", "Move players into raid subgroups and announce in raid chat.", "Works without addon on members — uses native raid groups.")
-
-    local sortBtn = KS.CreateButton(titleBar, "Sort", "accent", 52, 20)
-    sortBtn:SetPoint("RIGHT", applyBtn, "LEFT", -4, 0)
-    sortBtn:SetOnClick(function()
-        if #KS.roster == 0 then KS.ScanRoster() end
-        KS.SortGroups()
-        SetTab("groups")
-    end)
-    KS.sortButton = sortBtn
-    KS.AddTooltip(sortBtn, "Sort Groups", "Put like scores together so players of adequate skill level are in similar groups and can learn together.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
-
-    local scanBtn = KS.CreateButton(titleBar, "Scan", "accent", 52, 20)
-    scanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
-    scanBtn:SetOnClick(function()
-        KS.ScanRoster()
-        SetTab("roster")
-    end)
-    KS.scanButton = scanBtn
-    KS.AddTooltip(scanBtn, "Scan Roster", "Collect M+ data for all group members.")
+    -- About button
+    local aboutBtn = KS.CreateButton(titleBar, "About", "gray_hover", 44, 20)
+    aboutBtn:SetPoint("RIGHT", close, "LEFT", -4, 0)
+    aboutBtn:SetOnClick(function() KS.ToggleAbout() end)
+    KS.AddTooltip(aboutBtn, "About KeySorter", "View credits, license, and command reference.")
 
     ---------------------------------------------------------------------------
-    -- Tab buttons
+    -- Tab system (tabs in the title bar, right of title)
     ---------------------------------------------------------------------------
     local activeTab = "roster"
     local tabButtons = {}
     local tabContents = {}
+    local tabToolbars = {}
 
     local function SetTabInternal(tab)
         activeTab = tab
         for name, content in pairs(tabContents) do
             if name == tab then content:Show() else content:Hide() end
+        end
+        for name, tb in pairs(tabToolbars) do
+            if name == tab then tb:Show() else tb:Hide() end
         end
         for name, btn in pairs(tabButtons) do
             if name == tab then btn:LockHighlight() else btn:UnlockHighlight() end
@@ -107,29 +81,103 @@ function KS.CreateMainFrame()
     SetTab = SetTabInternal
     KS.SetTab = SetTabInternal
 
-    local function CreateTab(name, label, prevTab)
-        local btn = KS.CreateButton(f, label, "widget", 80, TAB_H)
+    local function CreateTab(name, label, prevTab, hasToolbar)
+        local btn = KS.CreateButton(titleBar, label, "widget", 70, 20)
         if prevTab then
             btn:SetPoint("LEFT", prevTab, "RIGHT", 2, 0)
         else
-            btn:SetPoint("TOPLEFT", 8, TABBAR_Y)
+            btn:SetPoint("LEFT", title, "RIGHT", 12, 0)
         end
         btn:SetOnClick(function() SetTabInternal(name) end)
         tabButtons[name] = btn
 
+        -- Optional toolbar below the title bar
+        local toolbar
+        if hasToolbar then
+            toolbar = CreateFrame("Frame", nil, f, "BackdropTemplate")
+            toolbar:SetPoint("TOPLEFT", 1, -(TITLEBAR_H + 1))
+            toolbar:SetPoint("TOPRIGHT", -1, -(TITLEBAR_H + 1))
+            toolbar:SetHeight(TOOLBAR_H)
+            toolbar:SetBackdrop(KS.BACKDROP_PANEL)
+            toolbar:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+            toolbar:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+            toolbar:Hide()
+            tabToolbars[name] = toolbar
+        end
+
+        -- Content area (adjusts depending on whether this tab has a toolbar)
+        local contentY = hasToolbar and CONTENT_Y_WITH_TOOLBAR or CONTENT_Y_NO_TOOLBAR
         local content = CreateFrame("Frame", nil, f)
-        content:SetPoint("TOPLEFT", 8, CONTENT_Y)
+        content:SetPoint("TOPLEFT", 8, contentY)
         content:SetPoint("BOTTOMRIGHT", -8, 8)
         content:Hide()
         tabContents[name] = content
 
-        return btn, content
+        return btn, content, toolbar
     end
 
-    local rosterTabBtn, rosterContent = CreateTab("roster", "Roster", nil)
-    local groupsTabBtn, groupContent = CreateTab("groups", "Groups", rosterTabBtn)
-    local previewTabBtn, previewContent = CreateTab("preview", "Preview", groupsTabBtn)
+    ---------------------------------------------------------------------------
+    -- Create tabs
+    ---------------------------------------------------------------------------
+    local rosterTabBtn, rosterContent, rosterToolbar = CreateTab("roster", "Roster", nil, true)
+    local groupsTabBtn, groupContent, groupsToolbar = CreateTab("groups", "Groups", rosterTabBtn, true)
+    local previewTabBtn, previewContent = CreateTab("preview", "Preview", groupsTabBtn, false)
 
+    ---------------------------------------------------------------------------
+    -- Roster toolbar: Scan, Sort
+    ---------------------------------------------------------------------------
+    local scanBtn = KS.CreateButton(rosterToolbar, "Scan", "accent", 52, 22)
+    scanBtn:SetPoint("LEFT", 6, 0)
+    scanBtn:SetOnClick(function()
+        KS.ScanRoster()
+    end)
+    KS.scanButton = scanBtn
+    KS.AddTooltip(scanBtn, "Scan Roster", "Collect M+ data for all group members.")
+
+    local sortBtnRoster = KS.CreateButton(rosterToolbar, "Sort", "accent", 52, 22)
+    sortBtnRoster:SetPoint("LEFT", scanBtn, "RIGHT", 4, 0)
+    sortBtnRoster:SetOnClick(function()
+        if #KS.roster == 0 then KS.ScanRoster() end
+        KS.SortGroups()
+        SetTabInternal("groups")
+    end)
+    KS.sortButton = sortBtnRoster
+    KS.AddTooltip(sortBtnRoster, "Sort Groups", "Put like scores together so players of adequate skill level are in similar groups and can learn together.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
+
+    ---------------------------------------------------------------------------
+    -- Groups toolbar: Sort, Apply, Announce, Sync
+    ---------------------------------------------------------------------------
+    local sortBtnGroups = KS.CreateButton(groupsToolbar, "Sort", "accent", 52, 22)
+    sortBtnGroups:SetPoint("LEFT", 6, 0)
+    sortBtnGroups:SetOnClick(function()
+        if #KS.roster == 0 then KS.ScanRoster() end
+        KS.SortGroups()
+        if KS.UpdateGroupView then KS.UpdateGroupView() end
+    end)
+    KS.sortButtonGroups = sortBtnGroups
+    KS.AddTooltip(sortBtnGroups, "Sort Groups", "Put like scores together so players of adequate skill level are in similar groups and can learn together.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
+
+    local applyBtn = KS.CreateButton(groupsToolbar, "Apply", "accent", 52, 22)
+    applyBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 4, 0)
+    applyBtn:SetOnClick(function() KS.ApplyGroups() end)
+    KS.applyButton = applyBtn
+    KS.AddTooltip(applyBtn, "Apply Groups", "Move players into raid subgroups.", "Works without addon on members — uses native raid groups.")
+
+    local announceBtn = KS.CreateButton(groupsToolbar, "Announce", "accent", 68, 22)
+    announceBtn:SetPoint("LEFT", applyBtn, "RIGHT", 4, 0)
+    announceBtn:SetOnClick(function() KS.AnnounceGroups() end)
+    KS.announceButton = announceBtn
+    KS.AddTooltip(announceBtn, "Announce Groups", "Post group assignments to raid chat.")
+
+    local syncBtn = KS.CreateButton(groupsToolbar, "Sync", "accent", 52, 22)
+    syncBtn:SetPoint("LEFT", announceBtn, "RIGHT", 4, 0)
+    syncBtn:SetOnClick(function() KS.SendSync() end)
+    KS.syncButton = syncBtn
+    KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
+
+    ---------------------------------------------------------------------------
+    -- Store references and build views
+    ---------------------------------------------------------------------------
     KS.mainFrame = f
     KS.rosterContent = rosterContent
     KS.groupContent = groupContent
@@ -176,7 +224,7 @@ end
 function KS.CreatePreviewView(parent)
     local desc = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     desc:SetPoint("TOPLEFT", 8, -8)
-    desc:SetText("Preview Mode")
+    desc:SetText("Preview / Test Mode")
     desc:SetTextColor(0, 0.8, 1)
 
     local subdesc = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -195,7 +243,7 @@ function KS.CreatePreviewView(parent)
     toggleBtn:SetOnClick(function()
         KS.TogglePreview()
         if KS.previewMode then
-            statusText:SetText("|cff00ff00ON|r — showing 25 fake players")
+            statusText:SetText("|cff00ff00ON|r — showing " .. (KS.previewPlayerCount or 25) .. " fake players")
             toggleBtn:SetText("Disable Preview")
         else
             statusText:SetText("|cffff0000OFF|r")
@@ -212,6 +260,7 @@ function KS.CreatePreviewView(parent)
         KS.previewPlayerCount = val
         if KS.previewMode then
             KS.GeneratePreviewData()
+            statusText:SetText("|cff00ff00ON|r — showing " .. val .. " fake players")
             if KS.UpdateRosterView then KS.UpdateRosterView() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
         end
@@ -219,7 +268,7 @@ function KS.CreatePreviewView(parent)
 end
 
 ---------------------------------------------------------------------------
--- Apply groups: move players into raid subgroups + announce to chat
+-- Apply groups: move players into raid subgroups
 ---------------------------------------------------------------------------
 function KS.ApplyGroups()
     if #KS.groups == 0 then
@@ -239,7 +288,6 @@ function KS.ApplyGroups()
         return
     end
 
-    -- Move players into subgroups
     for groupIdx, group in ipairs(KS.groups) do
         local members = {}
         if group.tank then table.insert(members, group.tank) end
@@ -260,7 +308,30 @@ function KS.ApplyGroups()
         end
     end
 
-    -- Announce to raid chat
+    print("|cff00ccffKeySorter|r: Groups applied to raid subgroups.")
+end
+
+---------------------------------------------------------------------------
+-- Announce groups: post assignments to raid chat
+---------------------------------------------------------------------------
+function KS.AnnounceGroups()
+    if #KS.groups == 0 then
+        print("|cff00ccffKeySorter|r: No groups to announce. Sort first.")
+        return
+    end
+    if KS.previewMode then
+        print("|cff00ccffKeySorter|r: Cannot announce in preview mode.")
+        return
+    end
+    if not IsInRaid() then
+        print("|cff00ccffKeySorter|r: Must be in a raid to announce groups.")
+        return
+    end
+    if not KS.IsPermitted() then
+        print("|cff00ccffKeySorter|r: Only raid leader/assistants can announce groups.")
+        return
+    end
+
     SendChatMessage("--- KeySorter Group Assignments ---", "RAID")
     for groupIdx, group in ipairs(KS.groups) do
         local names = {}
@@ -275,5 +346,5 @@ function KS.ApplyGroups()
         SendChatMessage("Unassigned: " .. table.concat(unNames, ", "), "RAID")
     end
 
-    print("|cff00ccffKeySorter|r: Groups applied and announced in raid chat.")
+    print("|cff00ccffKeySorter|r: Groups announced in raid chat.")
 end

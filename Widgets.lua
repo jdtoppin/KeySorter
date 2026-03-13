@@ -130,9 +130,12 @@ end
 -- Scroll Frame (clean, minimal thumb, no arrows)
 ---------------------------------------------------------------------------
 function KS.CreateScrollFrame(parent, name)
+    local TRACK_WIDTH = 6
+    local TRACK_GAP = 4   -- gap between content and scrollbar
+
     local scrollFrame = CreateFrame("ScrollFrame", name, parent)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -(TRACK_WIDTH + TRACK_GAP * 2), 0)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     -- Set a sensible default width; OnSizeChanged will correct it
@@ -140,11 +143,11 @@ function KS.CreateScrollFrame(parent, name)
     scrollChild:SetHeight(1)
     scrollFrame:SetScrollChild(scrollChild)
 
-    -- Thin scroll track
+    -- Thin scroll track (sits in the gap to the right of the scroll frame)
     local track = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    track:SetWidth(6)
-    track:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -2, 0)
-    track:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -2, 0)
+    track:SetWidth(TRACK_WIDTH)
+    track:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -TRACK_GAP, 0)
+    track:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -TRACK_GAP, 0)
     track:SetBackdrop(BACKDROP_BUTTON)
     track:SetBackdropColor(0.1, 0.1, 0.1, 0.5)
     track:SetBackdropBorderColor(0.2, 0.2, 0.2, 0.5)
@@ -335,43 +338,151 @@ function KS.CreateDropdown(parent, width, height)
 end
 
 ---------------------------------------------------------------------------
--- Slider
+-- Slider (flat squared style matching the rest of the UI)
 ---------------------------------------------------------------------------
 function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
     width = width or 160
     local container = CreateFrame("Frame", nil, parent)
-    container:SetSize(width, 40)
+    container:SetSize(width, 36)
 
+    -- Label (left)
     local label = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOPLEFT", 0, 0)
     label:SetText(labelText)
+    label:SetTextColor(0.7, 0.7, 0.7)
 
+    -- Value readout (right, accent colored)
     local valText = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("TOPRIGHT", 0, 0)
+    valText:SetTextColor(0, 0.8, 1)
 
-    local slider = CreateFrame("Slider", nil, container, "OptionsSliderTemplate")
-    slider:SetPoint("TOPLEFT", 0, -16)
-    slider:SetPoint("TOPRIGHT", 0, -16)
-    slider:SetHeight(16)
-    slider:SetMinMaxValues(minVal, maxVal)
-    slider:SetValueStep(step)
-    slider:SetObeyStepOnDrag(true)
-    slider:SetValue(minVal)
-    slider.Low:SetText("")
-    slider.High:SetText("")
-    slider.Text:SetText("")
-    valText:SetText(tostring(minVal))
+    -- Slider track (flat bar)
+    local trackHeight = 6
+    local trackFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
+    trackFrame:SetPoint("TOPLEFT", 0, -18)
+    trackFrame:SetPoint("TOPRIGHT", 0, -18)
+    trackFrame:SetHeight(trackHeight)
+    trackFrame:SetBackdrop(BACKDROP_BUTTON)
+    trackFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    trackFrame:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
 
-    slider:SetScript("OnValueChanged", function(self, value)
-        value = math.floor(value / step + 0.5) * step
-        valText:SetText(tostring(value))
-        if container._onChange then container._onChange(value) end
+    -- Fill bar (shows progress from min to current value)
+    local fill = trackFrame:CreateTexture(nil, "ARTWORK")
+    fill:SetPoint("TOPLEFT", 1, -1)
+    fill:SetHeight(trackHeight - 2)
+    fill:SetColorTexture(0, 0.5, 0.8, 0.7)
+
+    -- Thumb (squared, draggable)
+    local thumbW, thumbH = 12, 14
+    local thumb = CreateFrame("Frame", nil, trackFrame, "BackdropTemplate")
+    thumb:SetSize(thumbW, thumbH)
+    thumb:SetBackdrop(BACKDROP_BUTTON)
+    thumb:SetBackdropColor(0.35, 0.35, 0.35, 1)
+    thumb:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+    thumb:SetFrameLevel(trackFrame:GetFrameLevel() + 2)
+    thumb:EnableMouse(true)
+
+    thumb:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(0.5, 0.5, 0.5, 1)
+        self:SetBackdropBorderColor(0, 0.8, 1, 1)
+    end)
+    thumb:SetScript("OnLeave", function(self)
+        if not self._dragging then
+            self:SetBackdropColor(0.35, 0.35, 0.35, 1)
+            self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        end
     end)
 
-    container._slider = slider
+    -- Internal state
+    local currentValue = minVal
+
+    local function UpdateVisuals()
+        local trackWidth = trackFrame:GetWidth()
+        if trackWidth < 1 then trackWidth = width end
+        local range = maxVal - minVal
+        local ratio = range > 0 and ((currentValue - minVal) / range) or 0
+        ratio = math.max(0, math.min(ratio, 1))
+
+        -- Position thumb centered on the value point
+        local usable = trackWidth - thumbW
+        local xOff = ratio * usable
+        thumb:ClearAllPoints()
+        thumb:SetPoint("LEFT", trackFrame, "LEFT", xOff, 0)
+
+        -- Fill bar width
+        fill:SetWidth(math.max(xOff + thumbW * 0.5, 1))
+
+        valText:SetText(tostring(currentValue))
+    end
+
+    local function SetValueInternal(val)
+        val = math.floor(val / step + 0.5) * step
+        val = math.max(minVal, math.min(val, maxVal))
+        if val == currentValue then return end
+        currentValue = val
+        UpdateVisuals()
+        if container._onChange then container._onChange(currentValue) end
+    end
+
+    local function ValueFromMouseX(mouseX)
+        local trackLeft = trackFrame:GetLeft()
+        local trackWidth = trackFrame:GetWidth()
+        if not trackLeft or trackWidth < 1 then return currentValue end
+        local ratio = (mouseX - trackLeft) / trackWidth
+        ratio = math.max(0, math.min(ratio, 1))
+        return minVal + ratio * (maxVal - minVal)
+    end
+
+    -- Thumb drag
+    thumb:RegisterForDrag("LeftButton")
+    thumb:SetScript("OnDragStart", function(self)
+        self._dragging = true
+        self:SetBackdropColor(0.5, 0.5, 0.5, 1)
+        self:SetBackdropBorderColor(0, 0.8, 1, 1)
+    end)
+    thumb:SetScript("OnDragStop", function(self)
+        self._dragging = false
+        if not self:IsMouseOver() then
+            self:SetBackdropColor(0.35, 0.35, 0.35, 1)
+            self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        end
+    end)
+    thumb:SetScript("OnUpdate", function(self)
+        if not self._dragging then return end
+        local mouseX = GetCursorPosition() / self:GetEffectiveScale()
+        SetValueInternal(ValueFromMouseX(mouseX))
+    end)
+
+    -- Click anywhere on track to jump
+    trackFrame:EnableMouse(true)
+    trackFrame:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" then
+            local mouseX = GetCursorPosition() / self:GetEffectiveScale()
+            SetValueInternal(ValueFromMouseX(mouseX))
+        end
+    end)
+
+    -- Mouse wheel on the whole container
+    container:EnableMouseWheel(true)
+    container:SetScript("OnMouseWheel", function(_, delta)
+        SetValueInternal(currentValue + delta * step)
+    end)
+
+    -- Initial layout
+    trackFrame:SetScript("OnSizeChanged", function() UpdateVisuals() end)
+    valText:SetText(tostring(minVal))
+    UpdateVisuals()
+
+    container._slider = true
+    container._currentValue = function() return currentValue end
     function container:SetOnChange(fn) self._onChange = fn end
-    function container:SetValue(v) self._slider:SetValue(v) end
-    function container:GetValue() return self._slider:GetValue() end
+    function container:SetValue(v)
+        v = math.floor(v / step + 0.5) * step
+        v = math.max(minVal, math.min(v, maxVal))
+        currentValue = v
+        UpdateVisuals()
+    end
+    function container:GetValue() return currentValue end
 
     return container
 end

@@ -72,6 +72,16 @@ function KS.ScanUnit(unit, name, raidIndex)
     local numRuns = numTimed + numUntimed
     local avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
 
+    -- Item level: GetAverageItemLevel works for "player", others need inspect
+    local ilvl = 0
+    if UnitIsUnit(unit, "player") then
+        local overall, equipped = GetAverageItemLevel()
+        ilvl = math.floor(equipped or overall or 0)
+    elseif C_PaperDollInfo and C_PaperDollInfo.GetInspectItemLevel then
+        local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(unit)
+        ilvl = inspectIlvl and math.floor(inspectIlvl) or 0
+    end
+
     local entry = {
         name = name,
         unit = unit,
@@ -83,6 +93,7 @@ function KS.ScanUnit(unit, name, raidIndex)
         numRuns = numRuns,
         numTimed = numTimed,
         numUntimed = numUntimed,
+        ilvl = ilvl,
         raidIndex = raidIndex,
         hasBrez = KS.BREZ[classFile] or false,
         hasLust = KS.LUST[classFile] or false,
