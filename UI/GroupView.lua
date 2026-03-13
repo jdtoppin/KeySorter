@@ -74,21 +74,25 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     card:SetBackdropColor(0.15, 0.15, 0.15, 0.95)
     card:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
 
+    -- Group header
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 8, -6)
     header:SetText(format("Group %d", groupIdx))
     header:SetTextColor(0, 0.8, 1)
 
+    -- Average M+ score for the group
     local avgScore = KS.GroupScore(group)
     local avgText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     avgText:SetPoint("TOPRIGHT", -8, -6)
     avgText:SetText(format("Avg: %d", avgScore))
     avgText:SetTextColor(0.7, 0.7, 0.7)
 
+    -- Utility coverage (BR = battle rez, BL = bloodlust; dimmed if missing)
     local utilText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     utilText:SetPoint("TOPRIGHT", -8, -20)
     utilText:SetText(GetGroupUtilityString(group))
 
+    -- Members: 1 tank, 1 healer, 3 DPS
     local y = -24
     CreateMemberLine(card, y, "TANK", group.tank)
     y = y - MEMBER_HEIGHT
@@ -98,6 +102,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
         CreateMemberLine(card, y, "DAMAGER", dps)
         y = y - MEMBER_HEIGHT
     end
+    -- Fill empty DPS slots if group is incomplete
     for _ = #group.dps + 1, 3 do
         CreateMemberLine(card, y, "DAMAGER", nil)
         y = y - MEMBER_HEIGHT

@@ -226,6 +226,7 @@ function KS.UpdateRosterView()
         local row = rows[i]
         row:Show()
 
+        -- Name (class colored)
         local classColor = KS.CLASS_COLORS[member.classFile]
         if classColor then
             row.texts[1]:SetText(format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, member.name))
@@ -233,6 +234,7 @@ function KS.UpdateRosterView()
             row.texts[1]:SetText(member.name)
         end
 
+        -- Role icon
         row.texts[2]:SetText("")
         local roleAtlas = KS.ROLE_ICONS[member.role]
         if roleAtlas then
@@ -242,11 +244,17 @@ function KS.UpdateRosterView()
             row.roleIcon:Hide()
         end
 
+        -- Score (colored by M+ rating)
         local sr, sg, sb = GetScoreColor(member.score)
         row.texts[3]:SetText(format("|cff%02x%02x%02x%d|r", sr * 255, sg * 255, sb * 255, member.score))
 
+        -- Average key level across all dungeons
         row.texts[4]:SetText(format("%.1f", member.avgKeyLevel))
+
+        -- Number of dungeon runs completed
         row.texts[5]:SetText(tostring(member.numRuns))
+
+        -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
         row.texts[6]:SetText(GetUtilityString(member))
     end
 
