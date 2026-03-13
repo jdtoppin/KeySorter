@@ -1,9 +1,5 @@
 local addonName, KS = ...
 
----@type AbstractFramework
-local AF = _G.AbstractFramework
-
-KS.AF = AF
 KS.roster = {}
 KS.groups = {}
 KS.unassigned = {}

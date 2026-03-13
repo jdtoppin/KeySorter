@@ -1,5 +1,4 @@
 local addonName, KS = ...
-local AF = KS.AF
 
 local CARD_WIDTH = 210
 local CARD_HEIGHT = 140
@@ -75,25 +74,21 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     card:SetBackdropColor(0.15, 0.15, 0.15, 0.95)
     card:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
 
-    -- Header
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 8, -6)
     header:SetText(format("Group %d", groupIdx))
     header:SetTextColor(0, 0.8, 1)
 
-    -- Avg score
     local avgScore = KS.GroupScore(group)
     local avgText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     avgText:SetPoint("TOPRIGHT", -8, -6)
     avgText:SetText(format("Avg: %d", avgScore))
     avgText:SetTextColor(0.7, 0.7, 0.7)
 
-    -- Utility coverage
     local utilText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     utilText:SetPoint("TOPRIGHT", -8, -20)
     utilText:SetText(GetGroupUtilityString(group))
 
-    -- Members
     local y = -24
     CreateMemberLine(card, y, "TANK", group.tank)
     y = y - MEMBER_HEIGHT
@@ -161,7 +156,6 @@ end
 function KS.UpdateGroupView()
     if not scrollChild then return end
 
-    -- Clear existing cards
     for _, card in ipairs(groupCards) do
         card:Hide()
         card:SetParent(nil)
@@ -188,7 +182,6 @@ function KS.UpdateGroupView()
         return
     end
 
-    -- Layout cards in a grid (3 per row)
     local cardsPerRow = 3
     local totalWidth = scrollChild:GetWidth()
     if totalWidth < 1 then totalWidth = 650 end
@@ -211,7 +204,6 @@ function KS.UpdateGroupView()
         end
     end
 
-    -- Unassigned section below cards
     local lastRow = math.ceil(#KS.groups / cardsPerRow)
     local unassignedY = yStart - lastRow * (CARD_HEIGHT + CARD_PADDING) - CARD_PADDING
 

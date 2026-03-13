@@ -1,5 +1,4 @@
 local addonName, KS = ...
-local AF = KS.AF
 
 local FRAME_WIDTH = 700
 local FRAME_HEIGHT = 500
@@ -29,7 +28,7 @@ function KS.CreateMainFrame()
     -- Title bar drag region (left portion only, so buttons on right remain clickable)
     local titleBar = CreateFrame("Frame", nil, f)
     titleBar:SetPoint("TOPLEFT", 0, 0)
-    titleBar:SetPoint("TOPRIGHT", -250, 0) -- leave room for buttons on the right
+    titleBar:SetPoint("TOPRIGHT", -250, 0)
     titleBar:SetHeight(30)
     titleBar:EnableMouse(true)
     titleBar:RegisterForDrag("LeftButton")
@@ -46,9 +45,9 @@ function KS.CreateMainFrame()
     title:SetText("KeySorter")
     title:SetTextColor(0, 0.8, 1)
 
-    -- Close button (AF style)
-    local close = AF.CreateButton(f, "X", "red", 24, 24)
-    AF.SetPoint(close, "TOPRIGHT", -6, -4)
+    -- Close button
+    local close = KS.CreateButton(f, "X", "red", 24, 24)
+    close:SetPoint("TOPRIGHT", -6, -4)
     close:SetOnClick(function() f:Hide() end)
 
     -- Tab buttons
@@ -67,29 +66,31 @@ function KS.CreateMainFrame()
     end
     KS.SetTab = SetTab
 
-    local rosterTab = AF.CreateButton(f, "Roster", "accent", 80, 24)
-    AF.SetPoint(rosterTab, "TOPLEFT", 12, -32)
+    local rosterTab = KS.CreateButton(f, "Roster", "accent", 80, 24)
+    rosterTab:SetPoint("TOPLEFT", 12, -32)
     rosterTab:SetOnClick(function() SetTab("roster") end)
 
-    local groupTab = AF.CreateButton(f, "Groups", "accent", 80, 24)
-    AF.SetPoint(groupTab, "TOPLEFT", 96, -32)
+    local groupTab = KS.CreateButton(f, "Groups", "accent", 80, 24)
+    groupTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0)
     groupTab:SetOnClick(function() SetTab("groups") end)
 
     -- Action buttons (right side of title bar)
-    local syncBtn = AF.CreateButton(f, "Sync", "blue", 64, 24)
-    AF.SetPoint(syncBtn, "TOPRIGHT", -36, -4)
+    local syncBtn = KS.CreateButton(f, "Sync", "blue", 64, 24)
+    syncBtn:SetPoint("TOPRIGHT", -36, -4)
     syncBtn:SetOnClick(function() KS.SendSync() end)
+    KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
 
-    local scanBtn = AF.CreateButton(f, "Scan", "green", 64, 24)
-    AF.SetPoint(scanBtn, "TOPRIGHT", -104, -4)
+    local scanBtn = KS.CreateButton(f, "Scan", "green", 64, 24)
+    scanBtn:SetPoint("RIGHT", syncBtn, "LEFT", -4, 0)
     scanBtn:SetOnClick(function()
         KS.ScanRoster()
         SetTab("roster")
     end)
     KS.scanButton = scanBtn
+    KS.AddTooltip(scanBtn, "Scan Roster", "Collect M+ rating and dungeon data for all raid members.")
 
-    local sortBtn = AF.CreateButton(f, "Sort", "accent", 64, 24)
-    AF.SetPoint(sortBtn, "TOPRIGHT", -172, -4)
+    local sortBtn = KS.CreateButton(f, "Sort", "accent", 64, 24)
+    sortBtn:SetPoint("RIGHT", scanBtn, "LEFT", -4, 0)
     sortBtn:SetOnClick(function()
         if #KS.roster == 0 then
             KS.ScanRoster()
@@ -98,11 +99,13 @@ function KS.CreateMainFrame()
         SetTab("groups")
     end)
     KS.sortButton = sortBtn
+    KS.AddTooltip(sortBtn, "Sort Groups", "Form balanced 5-man groups using a snake-draft algorithm.", "Each group gets 1 tank, 1 healer, and 3 DPS.")
 
     -- About button
-    local aboutBtn = AF.CreateButton(f, "?", "gray_hover", 24, 24)
-    AF.SetPoint(aboutBtn, "TOPLEFT", 100, -8)
+    local aboutBtn = KS.CreateButton(f, "?", "gray_hover", 24, 24)
+    aboutBtn:SetPoint("LEFT", title, "RIGHT", 8, 0)
     aboutBtn:SetOnClick(function() KS.ToggleAbout() end)
+    KS.AddTooltip(aboutBtn, "About KeySorter", "View credits, license, and command reference.")
 
     -- Content containers
     rosterContent = CreateFrame("Frame", nil, f)

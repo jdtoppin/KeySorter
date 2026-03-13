@@ -1,5 +1,4 @@
 local addonName, KS = ...
-local AF = KS.AF
 
 local ROW_HEIGHT = 20
 local HEADER_HEIGHT = 24
@@ -52,7 +51,6 @@ local function GetScoreColor(score)
         local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
         if color then return color.r, color.g, color.b end
     end
-    -- Fallback gradient
     if score >= 2500 then return 1, 0.5, 0
     elseif score >= 2000 then return 0.6, 0.2, 0.8
     elseif score >= 1500 then return 0, 0.4, 1
@@ -72,9 +70,9 @@ end
 local function UpdateFilterHighlights()
     for i, btn in ipairs(filterButtons) do
         if i == filterIdx then
-            btn:SetColor({"accent", "accent"})
+            btn:LockHighlight()
         else
-            btn:SetColor("widget")
+            btn:UnlockHighlight()
         end
     end
 end
@@ -85,7 +83,6 @@ local function CreateRow(parent, index)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
     row:SetPoint("TOPRIGHT", 0, -(index - 1) * ROW_HEIGHT)
 
-    -- Alternating row background
     local highlight = row:CreateTexture(nil, "BACKGROUND")
     highlight:SetAllPoints()
     if index % 2 == 0 then
@@ -94,7 +91,6 @@ local function CreateRow(parent, index)
         highlight:SetColorTexture(1, 1, 1, 0.05)
     end
 
-    -- Mouseover highlight
     local hoverTex = row:CreateTexture(nil, "BACKGROUND", nil, 1)
     hoverTex:SetAllPoints()
     hoverTex:SetColorTexture(1, 1, 1, 0.1)
@@ -141,11 +137,11 @@ function KS.CreateRosterView(parent)
 
     local prevBtn
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
-        local btn = AF.CreateButton(filterBar, thresh.label, "widget", 56, 20)
+        local btn = KS.CreateButton(filterBar, thresh.label, "widget", 56, 20)
         if prevBtn then
-            AF.SetPoint(btn, "LEFT", prevBtn, "RIGHT", 2, 0)
+            btn:SetPoint("LEFT", prevBtn, "RIGHT", 2, 0)
         else
-            AF.SetPoint(btn, "LEFT", filterLabel, "RIGHT", 6, 0)
+            btn:SetPoint("LEFT", filterLabel, "RIGHT", 6, 0)
         end
         btn:SetOnClick(function()
             filterIdx = i
@@ -172,8 +168,8 @@ function KS.CreateRosterView(parent)
         local x = GetColumnX(ci)
 
         if sortable then
-            local btn = AF.CreateButton(headerBar, col.label, "gray_hover", col.width, HEADER_HEIGHT)
-            AF.SetPoint(btn, "LEFT", x, 0)
+            local btn = KS.CreateButton(headerBar, col.label, "gray_hover", col.width, HEADER_HEIGHT)
+            btn:SetPoint("LEFT", x, 0)
             btn:SetOnClick(function()
                 if sortField == col.key then
                     sortAsc = not sortAsc
@@ -211,12 +207,10 @@ end
 function KS.UpdateRosterView()
     if not scrollChild then return end
 
-    -- Hide existing rows
     for _, row in ipairs(rows) do
         row:Hide()
     end
 
-    -- Filter and sort roster
     local filtered = {}
     for _, member in ipairs(KS.roster) do
         if PassesFilter(member) then
@@ -225,7 +219,6 @@ function KS.UpdateRosterView()
     end
     table.sort(filtered, CompareMembers)
 
-    -- Create/update rows
     for i, member in ipairs(filtered) do
         if not rows[i] then
             rows[i] = CreateRow(scrollChild, i)
@@ -233,7 +226,6 @@ function KS.UpdateRosterView()
         local row = rows[i]
         row:Show()
 
-        -- Name (class colored)
         local classColor = KS.CLASS_COLORS[member.classFile]
         if classColor then
             row.texts[1]:SetText(format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, member.name))
@@ -241,7 +233,6 @@ function KS.UpdateRosterView()
             row.texts[1]:SetText(member.name)
         end
 
-        -- Role icon
         row.texts[2]:SetText("")
         local roleAtlas = KS.ROLE_ICONS[member.role]
         if roleAtlas then
@@ -251,17 +242,11 @@ function KS.UpdateRosterView()
             row.roleIcon:Hide()
         end
 
-        -- Score (colored)
         local sr, sg, sb = GetScoreColor(member.score)
         row.texts[3]:SetText(format("|cff%02x%02x%02x%d|r", sr * 255, sg * 255, sb * 255, member.score))
 
-        -- Avg key level
         row.texts[4]:SetText(format("%.1f", member.avgKeyLevel))
-
-        -- Runs
         row.texts[5]:SetText(tostring(member.numRuns))
-
-        -- Utilities
         row.texts[6]:SetText(GetUtilityString(member))
     end
 

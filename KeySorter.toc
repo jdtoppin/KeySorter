@@ -4,10 +4,10 @@
 ## Author: Josiah Toppin
 ## Version: 1.0.0
 ## SavedVariables: KeySorterDB
-## Dependencies: AbstractFramework
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 
 Data.lua
+Widgets.lua
 Core.lua
 Scanner.lua
 Sorter.lua

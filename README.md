@@ -14,20 +14,15 @@ Built for raid leaders who organize weekly M+ events and need to quickly form ba
 - **Permission Gated** — Only raid leaders and assistants can scan, sort, and sync
 - **Minimap Button** — Draggable "KS" button on the minimap for quick access
 
-## Dependencies
-
-- [AbstractFramework](https://github.com/enderneko/AbstractFramework) by enderneko — must be installed as a separate addon
-
 ## Usage
 
-1. Install [AbstractFramework](https://github.com/enderneko/AbstractFramework) into `Interface/AddOns/AbstractFramework`
-2. Install KeySorter into `Interface/AddOns/KeySorter`
-3. Form a raid group
-4. Type `/ks` to open the KeySorter window, or click the **KS** minimap button
-5. Click **Scan** to collect M+ data from all raid members
-6. Click **Sort** to generate balanced groups
-7. Click **Sync** to share assignments with assistants
-8. Use the **Roster** and **Groups** tabs to review data
+1. Install KeySorter into `Interface/AddOns/KeySorter`
+2. Form a raid group
+3. Type `/ks` to open the KeySorter window, or click the **KS** minimap button
+4. Click **Scan** to collect M+ data from all raid members
+5. Click **Sort** to generate balanced groups
+6. Click **Sync** to share assignments with assistants
+7. Use the **Roster** and **Groups** tabs to review data
 
 ## Commands
 
@@ -56,6 +51,7 @@ KeySorter/
 ├── KeySorter.toc       # Addon metadata
 ├── Core.lua            # Init, events, slash commands, SavedVariables
 ├── Data.lua            # Constants (class utilities, score thresholds)
+├── Widgets.lua         # UI widget library (buttons, dropdowns, sliders, tooltips)
 ├── Scanner.lua         # Raid roster scanning, M+ data collection
 ├── Sorter.lua          # Group formation algorithm
 ├── Comm.lua            # Leader/assistant sync via addon comms
@@ -63,13 +59,14 @@ KeySorter/
     ├── MainFrame.lua   # Main window, tabs, buttons
     ├── RosterView.lua  # Scrollable roster with sortable columns
     ├── GroupView.lua    # Group cards display
-    ├── About.lua       # Credits and license acknowledgments
+    ├── About.lua       # Credits and license info
     └── Minimap.lua     # Minimap button
 ```
 
-## Acknowledgments
+## Requirements
 
-This addon uses [AbstractFramework](https://github.com/enderneko/AbstractFramework) by enderneko, licensed under GPL-3.0.
+- World of Warcraft (Midnight, Interface 120000)
+- No external dependencies
 
 ## License
 

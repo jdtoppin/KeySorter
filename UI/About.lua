@@ -1,5 +1,4 @@
 local addonName, KS = ...
-local AF = KS.AF
 
 local aboutFrame
 
@@ -16,7 +15,7 @@ end
 
 function KS.CreateAboutFrame()
     aboutFrame = CreateFrame("Frame", "KeySorterAboutFrame", UIParent, "BackdropTemplate")
-    aboutFrame:SetSize(400, 320)
+    aboutFrame:SetSize(360, 260)
     aboutFrame:SetFrameStrata("DIALOG")
     aboutFrame:SetMovable(true)
     aboutFrame:EnableMouse(true)
@@ -32,14 +31,13 @@ function KS.CreateAboutFrame()
     aboutFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
     aboutFrame:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
 
-    -- Drag
     aboutFrame:RegisterForDrag("LeftButton")
     aboutFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     aboutFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
     -- Close
-    local close = AF.CreateButton(aboutFrame, "X", "red", 24, 24)
-    AF.SetPoint(close, "TOPRIGHT", -6, -4)
+    local close = KS.CreateButton(aboutFrame, "X", "red", 24, 24)
+    close:SetPoint("TOPRIGHT", -6, -4)
     close:SetOnClick(function() aboutFrame:Hide() end)
 
     -- Title
@@ -77,14 +75,9 @@ function KS.CreateAboutFrame()
     AddLine("GNU General Public License v3.0", 0.9, 0.9, 0.9)
     y = y - 4
 
-    AddLine("Acknowledgments", 0, 0.8, 1, "GameFontNormal")
-    AddLine("This addon uses AbstractFramework by enderneko, a minimalist World of Warcraft addon framework for fast widget creation. AbstractFramework is licensed under GPL-3.0.", 0.9, 0.9, 0.9)
-    y = y - 4
-
     AddLine("Commands", 0, 0.8, 1, "GameFontNormal")
     AddLine("|cff00ff00/ks|r  Toggle window\n|cff00ff00/ks scan|r  Scan raid roster\n|cff00ff00/ks sort|r  Sort into groups\n|cff00ff00/ks sync|r  Sync to assistants\n|cff00ff00/ks about|r  This window", 0.9, 0.9, 0.9)
 
-    -- ESC to close
     table.insert(UISpecialFrames, "KeySorterAboutFrame")
     aboutFrame:Hide()
 end
