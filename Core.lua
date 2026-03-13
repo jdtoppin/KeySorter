@@ -179,12 +179,16 @@ function KS.GeneratePreviewData()
         local totalKeyLevel = 0
 
         local runs = {}
+        local numTimed = 0
+        local numUntimed = 0
         for r = 1, numRuns do
             local level = math.random(2, 15)
             totalKeyLevel = totalKeyLevel + level
+            local timed = math.random() > 0.3
+            if timed then numTimed = numTimed + 1 else numUntimed = numUntimed + 1 end
             runs[r * 100] = {
                 level = level,
-                timed = math.random() > 0.3,
+                timed = timed,
                 score = math.random(50, 300),
             }
         end
@@ -198,6 +202,8 @@ function KS.GeneratePreviewData()
             runs = runs,
             avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0,
             numRuns = numRuns,
+            numTimed = numTimed,
+            numUntimed = numUntimed,
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,

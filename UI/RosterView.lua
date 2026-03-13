@@ -10,15 +10,18 @@ local filterIdx = 1
 
 local scrollFrame, scrollChild
 local rows = {}
-local headerLabels = {}
+local headerArrows = {} -- arrow FontStrings per column index
+local headerTexts = {}  -- label FontStrings per column index
 
 local COLUMNS = {
-    { key = "name",        label = "Name",    width = 140, align = "LEFT",   sortable = true },
-    { key = "role",        label = "Role",    width = 50,  align = "CENTER", sortable = false },
-    { key = "score",       label = "Score",   width = 70,  align = "RIGHT",  sortable = true },
-    { key = "avgKeyLevel", label = "Avg Key", width = 60,  align = "RIGHT",  sortable = true },
-    { key = "numRuns",     label = "Runs",    width = 50,  align = "RIGHT",  sortable = true },
-    { key = "utilities",   label = "Utility", width = 80,  align = "CENTER", sortable = false },
+    { key = "name",        label = "Name",    width = 130, align = "LEFT",   sortable = true },
+    { key = "role",        label = "Role",    width = 44,  align = "CENTER", sortable = false },
+    { key = "score",       label = "Score",   width = 60,  align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel", label = "Avg Key", width = 56,  align = "RIGHT",  sortable = true },
+    { key = "numTimed",    label = "Timed",   width = 46,  align = "RIGHT",  sortable = true },
+    { key = "numUntimed",  label = "Untimed", width = 56,  align = "RIGHT",  sortable = true },
+    { key = "numRuns",     label = "Total",   width = 44,  align = "RIGHT",  sortable = true },
+    { key = "utilities",   label = "Utility", width = 70,  align = "CENTER", sortable = false },
 }
 
 local function GetColumnX(idx)
@@ -62,20 +65,26 @@ end
 local function GetUtilityString(member)
     local parts = {}
     if member.hasBrez then table.insert(parts, "|cff00cc00BR|r") end
-    if member.hasLust then table.insert(parts, "|cffcc0000BL|r") end
+    if member.hasLust then table.insert(parts, "|cff00cc00BL|r") end
     if member.hasShroud then table.insert(parts, "|cff8800ccSH|r") end
     return table.concat(parts, " ")
 end
 
--- Update header labels to show sort arrows
+-- Update sort arrows: highlight the active sort column's arrow
 local function UpdateSortIndicators()
     for ci, col in ipairs(COLUMNS) do
-        if col.sortable and headerLabels[ci] then
-            local arrow = ""
+        if col.sortable and headerArrows[ci] then
             if sortField == col.key then
-                arrow = sortAsc and " ^" or " v"
+                -- Active sort: bright arrow
+                headerArrows[ci]:SetText(sortAsc and "^" or "v")
+                headerArrows[ci]:SetTextColor(0, 0.8, 1)
+                headerTexts[ci]:SetTextColor(1, 1, 1)
+            else
+                -- Inactive: dim arrow always showing "v"
+                headerArrows[ci]:SetText("v")
+                headerArrows[ci]:SetTextColor(0.35, 0.35, 0.35)
+                headerTexts[ci]:SetTextColor(0.7, 0.7, 0.7)
             end
-            headerLabels[ci]:SetText(col.label .. arrow)
         end
     end
 end
@@ -143,7 +152,6 @@ function KS.CreateRosterView(parent)
     filterLabel:SetPoint("LEFT", 4, 0)
     filterLabel:SetText("Filter:")
 
-    -- Build dropdown items from score thresholds
     local ddItems = {}
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
         table.insert(ddItems, { text = thresh.label, value = i })
@@ -166,7 +174,7 @@ function KS.CreateRosterView(parent)
     KS._rosterCountText = countText
 
     ---------------------------------------------------------------------------
-    -- Column headers (sortable columns show arrows)
+    -- Column headers with sort arrows
     ---------------------------------------------------------------------------
     local headerBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     headerBar:SetPoint("TOPLEFT", 0, -TOOLBAR_HEIGHT)
@@ -180,23 +188,31 @@ function KS.CreateRosterView(parent)
         local x = GetColumnX(ci)
 
         if col.sortable then
-            -- Clickable sort button
             local btn = CreateFrame("Button", nil, headerBar)
             btn:SetPoint("LEFT", x, 0)
             btn:SetSize(col.width, HEADER_HEIGHT)
 
-            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            -- Column label
+            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             text:SetPoint("LEFT", 2, 0)
             text:SetText(col.label)
-            text:SetTextColor(0.8, 0.8, 0.8)
-            headerLabels[ci] = text
+            text:SetTextColor(0.7, 0.7, 0.7)
+            headerTexts[ci] = text
 
-            -- Hover: brighten text
+            -- Sort arrow (right side of header cell)
+            local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            arrow:SetPoint("RIGHT", -2, 0)
+            arrow:SetText("v")
+            arrow:SetTextColor(0.35, 0.35, 0.35)
+            headerArrows[ci] = arrow
+
+            -- Hover: brighten
             btn:SetScript("OnEnter", function()
                 text:SetTextColor(1, 1, 1)
+                arrow:SetTextColor(0.7, 0.7, 0.7)
             end)
             btn:SetScript("OnLeave", function()
-                text:SetTextColor(0.8, 0.8, 0.8)
+                UpdateSortIndicators()
             end)
 
             btn:SetScript("OnClick", function()
@@ -210,12 +226,12 @@ function KS.CreateRosterView(parent)
                 KS.UpdateRosterView()
             end)
         else
-            -- Non-sortable: plain dimmed label
-            local text = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            -- Non-sortable: dimmed label, no arrow
+            local text = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             text:SetPoint("LEFT", x + 2, 0)
             text:SetText(col.label)
-            text:SetTextColor(0.5, 0.5, 0.5)
-            headerLabels[ci] = text
+            text:SetTextColor(0.4, 0.4, 0.4)
+            headerTexts[ci] = text
         end
     end
 
@@ -287,11 +303,17 @@ function KS.UpdateRosterView()
         -- Average key level across all dungeons
         row.texts[4]:SetText(format("%.1f", member.avgKeyLevel))
 
-        -- Number of dungeon runs completed
-        row.texts[5]:SetText(tostring(member.numRuns))
+        -- Timed runs
+        row.texts[5]:SetText("|cff00cc00" .. tostring(member.numTimed or 0) .. "|r")
+
+        -- Untimed runs
+        row.texts[6]:SetText("|cffcc0000" .. tostring(member.numUntimed or 0) .. "|r")
+
+        -- Total runs
+        row.texts[7]:SetText(tostring(member.numRuns))
 
         -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
-        row.texts[6]:SetText(GetUtilityString(member))
+        row.texts[8]:SetText(GetUtilityString(member))
     end
 
     scrollChild:SetHeight(math.max(#filtered * ROW_HEIGHT, 1))

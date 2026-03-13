@@ -44,7 +44,8 @@ function KS.ScanUnit(unit, name, raidIndex)
     local score = 0
     local runs = {}
     local totalKeyLevel = 0
-    local numRuns = 0
+    local numTimed = 0
+    local numUntimed = 0
 
     local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
     if summary then
@@ -58,12 +59,17 @@ function KS.ScanUnit(unit, name, raidIndex)
                 }
                 if run.bestRunLevel and run.bestRunLevel > 0 then
                     totalKeyLevel = totalKeyLevel + run.bestRunLevel
-                    numRuns = numRuns + 1
+                    if run.finishedSuccess then
+                        numTimed = numTimed + 1
+                    else
+                        numUntimed = numUntimed + 1
+                    end
                 end
             end
         end
     end
 
+    local numRuns = numTimed + numUntimed
     local avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
 
     local entry = {
@@ -75,6 +81,8 @@ function KS.ScanUnit(unit, name, raidIndex)
         runs = runs,
         avgKeyLevel = avgKeyLevel,
         numRuns = numRuns,
+        numTimed = numTimed,
+        numUntimed = numUntimed,
         raidIndex = raidIndex,
         hasBrez = KS.BREZ[classFile] or false,
         hasLust = KS.LUST[classFile] or false,
