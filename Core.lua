@@ -4,6 +4,7 @@ KS.roster = {}
 KS.groups = {}
 KS.unassigned = {}
 KS.previewMode = false
+KS.previewPlayerCount = 25
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
@@ -22,7 +23,6 @@ frame:SetScript("OnEvent", function(self, event, ...)
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
-        -- Auto-refresh roster when group composition changes
         if KS.previewMode then return end
         if KS.mainFrame and KS.mainFrame:IsShown() then
             KS.ScanRoster()
@@ -66,9 +66,9 @@ local function PrintHelp()
     print("  |cff00ff00/ks|r — toggle window")
     print("  |cff00ff00/ks scan|r — scan raid roster")
     print("  |cff00ff00/ks sort|r — sort into groups")
-    print("  |cff00ff00/ks sync|r — sync groups to assistants")
     print("  |cff00ff00/ks apply|r — move players to subgroups + announce")
-    print("  |cff00ff00/ks preview|r — toggle preview mode (fake 25-man data)")
+    print("  |cff00ff00/ks sync|r — sync groups to assistants")
+    print("  |cff00ff00/ks preview|r — toggle preview mode")
     print("  |cff00ff00/ks about|r — credits & license info")
     print("  |cff00ff00/ks help|r — show this help")
 end
@@ -86,18 +86,17 @@ SlashCmdList["KEYSORTER"] = function(msg)
         KS.mainFrame:Show()
         KS.UpdatePermissionState()
     elseif cmd == "sort" then
-        if #KS.roster == 0 then
-            KS.ScanRoster()
-        end
+        if #KS.roster == 0 then KS.ScanRoster() end
         KS.SortGroups()
         EnsureMainFrame()
         KS.mainFrame:Show()
         KS.UpdatePermissionState()
-    elseif cmd == "sync" then
-        KS.SendSync()
     elseif cmd == "apply" then
         KS.ApplyGroups()
+    elseif cmd == "sync" then
+        KS.SendSync()
     elseif cmd == "preview" or cmd == "test" then
+        EnsureMainFrame()
         KS.TogglePreview()
     elseif cmd == "about" or cmd == "credits" then
         EnsureMainFrame()
@@ -118,6 +117,9 @@ local PREVIEW_NAMES = {
     "Vereesa", "Liadrin", "Lorthemar", "Thalyssra", "Alleria",
     "Magni", "Moira", "Falstad", "Gelbin", "Muradin",
     "Talanji", "Bwonsamdi", "Rokhan", "Gazlowe", "Calia",
+    "Rexxar", "Chromie", "Wrathion", "Ebyssian", "Kalecgos",
+    "Alexstrasza", "Nozdormu", "Ysera", "Merithra", "Vyranoth",
+    "Xalatath", "Dagran", "Yrel", "Turalyon", "Lothraxion",
 }
 
 local PREVIEW_CLASSES = {
@@ -128,16 +130,19 @@ local PREVIEW_CLASSES = {
 
 function KS.TogglePreview()
     KS.previewMode = not KS.previewMode
-    EnsureMainFrame()
 
     if KS.previewMode then
         KS.GeneratePreviewData()
-        print("|cff00ccffKeySorter|r: Preview mode |cff00ff00ON|r — showing fake 25-player raid.")
+        print("|cff00ccffKeySorter|r: Preview mode |cff00ff00ON|r.")
     else
         wipe(KS.roster)
         wipe(KS.groups)
         wipe(KS.unassigned)
-        print("|cff00ccffKeySorter|r: Preview mode |cffff0000OFF|r — data cleared.")
+        -- Re-scan real roster if in a group
+        if GetNumGroupMembers() > 0 then
+            KS.ScanRoster()
+        end
+        print("|cff00ccffKeySorter|r: Preview mode |cffff0000OFF|r.")
     end
 
     if KS.UpdateRosterView then KS.UpdateRosterView() end
@@ -152,14 +157,22 @@ function KS.GeneratePreviewData()
     wipe(KS.groups)
     wipe(KS.unassigned)
 
-    local numPlayers = 25 -- enough for 5 groups
-    -- Role distribution: 5 tanks, 5 healers, 15 DPS
-    local roles = {}
-    for i = 1, 5 do roles[i] = "TANK" end
-    for i = 6, 10 do roles[i] = "HEALER" end
-    for i = 11, numPlayers do roles[i] = "DAMAGER" end
+    local numPlayers = KS.previewPlayerCount or 25
+    -- Role distribution: ~1 tank per 5, ~1 healer per 5, rest DPS
+    local numGroups = math.floor(numPlayers / 5)
+    local numTanks = math.max(numGroups, 1)
+    local numHealers = math.max(numGroups, 1)
 
     for i = 1, numPlayers do
+        local role
+        if i <= numTanks then
+            role = "TANK"
+        elseif i <= numTanks + numHealers then
+            role = "HEALER"
+        else
+            role = "DAMAGER"
+        end
+
         local classFile = PREVIEW_CLASSES[math.random(#PREVIEW_CLASSES)]
         local score = math.random(200, 3500)
         local numRuns = math.random(0, 8)
@@ -176,16 +189,14 @@ function KS.GeneratePreviewData()
             }
         end
 
-        local avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
-
         table.insert(KS.roster, {
             name = PREVIEW_NAMES[i] or ("Player" .. i),
             unit = "player",
             classFile = classFile,
-            role = roles[i],
+            role = role,
             score = score,
             runs = runs,
-            avgKeyLevel = avgKeyLevel,
+            avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0,
             numRuns = numRuns,
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,

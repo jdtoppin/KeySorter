@@ -2,7 +2,7 @@ local addonName, KS = ...
 
 local ROW_HEIGHT = 20
 local HEADER_HEIGHT = 24
-local FILTER_HEIGHT = 28
+local TOOLBAR_HEIGHT = 30
 
 local sortField = "score"
 local sortAsc = false
@@ -10,15 +10,15 @@ local filterIdx = 1
 
 local scrollFrame, scrollChild
 local rows = {}
-local filterButtons = {}
+local headerLabels = {}
 
 local COLUMNS = {
-    { key = "name",       label = "Name",    width = 140, align = "LEFT" },
-    { key = "role",       label = "Role",    width = 50,  align = "CENTER" },
-    { key = "score",      label = "Score",   width = 70,  align = "RIGHT" },
-    { key = "avgKeyLevel", label = "Avg Key", width = 60,  align = "RIGHT" },
-    { key = "numRuns",    label = "Runs",    width = 50,  align = "RIGHT" },
-    { key = "utilities",  label = "Utility", width = 80,  align = "CENTER" },
+    { key = "name",        label = "Name",    width = 140, align = "LEFT",   sortable = true },
+    { key = "role",        label = "Role",    width = 50,  align = "CENTER", sortable = false },
+    { key = "score",       label = "Score",   width = 70,  align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel", label = "Avg Key", width = 60,  align = "RIGHT",  sortable = true },
+    { key = "numRuns",     label = "Runs",    width = 50,  align = "RIGHT",  sortable = true },
+    { key = "utilities",   label = "Utility", width = 80,  align = "CENTER", sortable = false },
 }
 
 local function GetColumnX(idx)
@@ -67,12 +67,15 @@ local function GetUtilityString(member)
     return table.concat(parts, " ")
 end
 
-local function UpdateFilterHighlights()
-    for i, btn in ipairs(filterButtons) do
-        if i == filterIdx then
-            btn:LockHighlight()
-        else
-            btn:UnlockHighlight()
+-- Update header labels to show sort arrows
+local function UpdateSortIndicators()
+    for ci, col in ipairs(COLUMNS) do
+        if col.sortable and headerLabels[ci] then
+            local arrow = ""
+            if sortField == col.key then
+                arrow = sortAsc and " \226\150\178" or " \226\150\188" -- ▲ or ▼
+            end
+            headerLabels[ci]:SetText(col.label .. arrow)
         end
     end
 end
@@ -128,74 +131,105 @@ local function CreateRow(parent, index)
 end
 
 function KS.CreateRosterView(parent)
-    -- Filter buttons
-    local filterBar = CreateFrame("Frame", nil, parent)
-    filterBar:SetPoint("TOPLEFT", 0, 0)
-    filterBar:SetPoint("TOPRIGHT", 0, 0)
-    filterBar:SetHeight(FILTER_HEIGHT)
+    ---------------------------------------------------------------------------
+    -- Toolbar: filter dropdown + member count
+    ---------------------------------------------------------------------------
+    local toolbar = CreateFrame("Frame", nil, parent)
+    toolbar:SetPoint("TOPLEFT", 0, 0)
+    toolbar:SetPoint("TOPRIGHT", 0, 0)
+    toolbar:SetHeight(TOOLBAR_HEIGHT)
 
-    local filterLabel = filterBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local filterLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     filterLabel:SetPoint("LEFT", 4, 0)
     filterLabel:SetText("Filter:")
 
-    local prevBtn
+    -- Build dropdown items from score thresholds
+    local ddItems = {}
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
-        local btn = KS.CreateButton(filterBar, thresh.label, "widget", 56, 20)
-        if prevBtn then
-            btn:SetPoint("LEFT", prevBtn, "RIGHT", 2, 0)
-        else
-            btn:SetPoint("LEFT", filterLabel, "RIGHT", 6, 0)
-        end
-        btn:SetOnClick(function()
-            filterIdx = i
-            KeySorterDB.filterIdx = i
-            UpdateFilterHighlights()
-            KS.UpdateRosterView()
-        end)
-        filterButtons[i] = btn
-        prevBtn = btn
+        table.insert(ddItems, { text = thresh.label, value = i })
     end
 
-    -- Column headers
+    local filterDD = KS.CreateDropdown(toolbar, 120, 22)
+    filterDD:SetPoint("LEFT", filterLabel, "RIGHT", 6, 0)
+    filterDD:SetItems(ddItems)
+    filterDD:SetSelected(KeySorterDB.filterIdx or 1)
+    filterDD:SetOnSelect(function(value)
+        filterIdx = value
+        KeySorterDB.filterIdx = value
+        KS.UpdateRosterView()
+    end)
+
+    -- Member count (right side of toolbar)
+    local countText = toolbar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    countText:SetPoint("RIGHT", -4, 0)
+    countText:SetTextColor(0.6, 0.6, 0.6)
+    KS._rosterCountText = countText
+
+    ---------------------------------------------------------------------------
+    -- Column headers (sortable columns show arrows)
+    ---------------------------------------------------------------------------
     local headerBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    headerBar:SetPoint("TOPLEFT", 0, -FILTER_HEIGHT)
-    headerBar:SetPoint("TOPRIGHT", 0, -FILTER_HEIGHT)
+    headerBar:SetPoint("TOPLEFT", 0, -TOOLBAR_HEIGHT)
+    headerBar:SetPoint("TOPRIGHT", 0, -TOOLBAR_HEIGHT)
     headerBar:SetHeight(HEADER_HEIGHT)
     headerBar:SetBackdrop(KS.BACKDROP_PANEL)
     headerBar:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
     headerBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
 
     for ci, col in ipairs(COLUMNS) do
-        local sortable = col.key ~= "utilities" and col.key ~= "role"
         local x = GetColumnX(ci)
 
-        if sortable then
-            local btn = KS.CreateButton(headerBar, col.label, "gray_hover", col.width, HEADER_HEIGHT)
+        if col.sortable then
+            -- Clickable sort button
+            local btn = CreateFrame("Button", nil, headerBar)
             btn:SetPoint("LEFT", x, 0)
-            btn:SetOnClick(function()
+            btn:SetSize(col.width, HEADER_HEIGHT)
+
+            local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            text:SetPoint("LEFT", 2, 0)
+            text:SetText(col.label)
+            text:SetTextColor(0.8, 0.8, 0.8)
+            headerLabels[ci] = text
+
+            -- Hover: brighten text
+            btn:SetScript("OnEnter", function()
+                text:SetTextColor(1, 1, 1)
+            end)
+            btn:SetScript("OnLeave", function()
+                text:SetTextColor(0.8, 0.8, 0.8)
+            end)
+
+            btn:SetScript("OnClick", function()
                 if sortField == col.key then
                     sortAsc = not sortAsc
                 else
                     sortField = col.key
                     sortAsc = false
                 end
+                UpdateSortIndicators()
                 KS.UpdateRosterView()
             end)
         else
+            -- Non-sortable: plain dimmed label
             local text = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             text:SetPoint("LEFT", x + 2, 0)
             text:SetText(col.label)
+            text:SetTextColor(0.5, 0.5, 0.5)
+            headerLabels[ci] = text
         end
     end
 
-    -- Custom scroll frame (clean thin scrollbar)
+    UpdateSortIndicators()
+
+    ---------------------------------------------------------------------------
+    -- Scroll area
+    ---------------------------------------------------------------------------
     scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterRosterScroll")
     scrollFrame:ClearAllPoints()
-    scrollFrame:SetPoint("TOPLEFT", 0, -(FILTER_HEIGHT + HEADER_HEIGHT))
+    scrollFrame:SetPoint("TOPLEFT", 0, -(TOOLBAR_HEIGHT + HEADER_HEIGHT))
     scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
 
     filterIdx = KeySorterDB.filterIdx or 1
-    UpdateFilterHighlights()
 end
 
 function KS.UpdateRosterView()
@@ -214,6 +248,11 @@ function KS.UpdateRosterView()
         end
     end
     table.sort(filtered, CompareMembers)
+
+    -- Update count
+    if KS._rosterCountText then
+        KS._rosterCountText:SetText(format("%d / %d members", #filtered, #KS.roster))
+    end
 
     -- Create/update rows
     for i, member in ipairs(filtered) do
@@ -255,5 +294,5 @@ function KS.UpdateRosterView()
         row.texts[6]:SetText(GetUtilityString(member))
     end
 
-    scrollChild:SetHeight(#filtered * ROW_HEIGHT)
+    scrollChild:SetHeight(math.max(#filtered * ROW_HEIGHT, 1))
 end

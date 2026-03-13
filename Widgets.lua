@@ -47,8 +47,6 @@ end
 ---------------------------------------------------------------------------
 -- Button
 ---------------------------------------------------------------------------
--- KS.CreateButton(parent, text, colorName, width, height)
--- colorName: "accent", "green", "blue", "red", "widget", "gray_hover", "dark"
 function KS.CreateButton(parent, text, colorName, width, height)
     local c = ResolveColor(colorName)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -62,28 +60,26 @@ function KS.CreateButton(parent, text, colorName, width, height)
     label:SetPoint("CENTER", 0, 0)
     if text then label:SetText(text) end
     btn._label = label
+    btn._color = c
 
-    -- Hover effect
     btn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(unpack(c.h))
+        self:SetBackdropColor(unpack(self._color.h))
         self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
     end)
     btn:SetScript("OnLeave", function(self)
         if not self._locked then
-            self:SetBackdropColor(unpack(c.n))
+            self:SetBackdropColor(unpack(self._color.n))
             self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
         end
     end)
 
-    -- Push effect
     btn:SetScript("OnMouseDown", function(self)
-        label:SetPoint("CENTER", 0, -1)
+        self._label:SetPoint("CENTER", 0, -1)
     end)
     btn:SetScript("OnMouseUp", function(self)
-        label:SetPoint("CENTER", 0, 0)
+        self._label:SetPoint("CENTER", 0, 0)
     end)
 
-    -- API
     function btn:SetOnClick(fn)
         self:SetScript("OnClick", fn)
     end
@@ -97,20 +93,21 @@ function KS.CreateButton(parent, text, colorName, width, height)
     end
 
     function btn:SetColor(colorOrName)
-        local nc = ResolveColor(colorOrName)
-        c = nc
-        self:SetBackdropColor(unpack(c.n))
+        self._color = ResolveColor(colorOrName)
+        if not self._locked then
+            self:SetBackdropColor(unpack(self._color.n))
+        end
     end
 
     function btn:LockHighlight()
         self._locked = true
-        self:SetBackdropColor(unpack(c.h))
+        self:SetBackdropColor(unpack(self._color.h))
         self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
     end
 
     function btn:UnlockHighlight()
         self._locked = false
-        self:SetBackdropColor(unpack(c.n))
+        self:SetBackdropColor(unpack(self._color.n))
         self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     end
 
@@ -132,20 +129,19 @@ end
 ---------------------------------------------------------------------------
 -- Scroll Frame (clean, minimal thumb, no arrows)
 ---------------------------------------------------------------------------
--- KS.CreateScrollFrame(parent)
--- Returns scrollFrame, scrollChild
 function KS.CreateScrollFrame(parent, name)
     local scrollFrame = CreateFrame("ScrollFrame", name, parent)
     scrollFrame:SetPoint("TOPLEFT", 0, 0)
     scrollFrame:SetPoint("BOTTOMRIGHT", -10, 0)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetWidth(scrollFrame:GetWidth())
+    -- Set a sensible default width; OnSizeChanged will correct it
+    scrollChild:SetWidth(math.max(scrollFrame:GetWidth(), 600))
     scrollChild:SetHeight(1)
     scrollFrame:SetScrollChild(scrollChild)
 
     -- Thin scroll track
-    local track = CreateFrame("Frame", nil, scrollFrame, "BackdropTemplate")
+    local track = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     track:SetWidth(6)
     track:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -2, 0)
     track:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -2, 0)
@@ -162,10 +158,8 @@ function KS.CreateScrollFrame(parent, name)
     thumb:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     thumb:EnableMouse(true)
     thumb:SetPoint("TOP", track, "TOP", 0, 0)
-    scrollFrame._thumb = thumb
-    scrollFrame._track = track
+    thumb:Hide()
 
-    -- Hover effect on thumb
     thumb:SetScript("OnEnter", function(self)
         self:SetBackdropColor(0.5, 0.5, 0.5, 1)
     end)
@@ -175,7 +169,6 @@ function KS.CreateScrollFrame(parent, name)
         end
     end)
 
-    -- Drag to scroll
     thumb:RegisterForDrag("LeftButton")
     thumb:SetScript("OnDragStart", function(self)
         self._dragging = true
@@ -201,14 +194,13 @@ function KS.CreateScrollFrame(parent, name)
         end
     end)
 
-    -- Mouse wheel scrolling
+    -- Mouse wheel (correct event name: OnMouseWheel)
     scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheelScroll", function(self, delta)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
         local scroll = self:GetVerticalScroll() - (delta * 20)
         self:SetVerticalScroll(math.max(0, math.min(scroll, self:GetVerticalScrollRange())))
     end)
 
-    -- Update thumb position/size on scroll
     local function UpdateThumb()
         local scrollRange = scrollFrame:GetVerticalScrollRange()
         if scrollRange <= 0 then
@@ -231,7 +223,7 @@ function KS.CreateScrollFrame(parent, name)
     scrollFrame:SetScript("OnScrollRangeChanged", function() UpdateThumb() end)
     scrollFrame:SetScript("OnVerticalScroll", function() UpdateThumb() end)
     scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
-        scrollChild:SetWidth(w)
+        scrollChild:SetWidth(math.max(w, 1))
         UpdateThumb()
     end)
 
@@ -241,9 +233,6 @@ end
 ---------------------------------------------------------------------------
 -- Dropdown
 ---------------------------------------------------------------------------
--- KS.CreateDropdown(parent, width, height)
--- Returns a dropdown frame. Use :SetItems(items) and :SetOnSelect(fn).
--- items = { { text = "Label", value = val }, ... }
 function KS.CreateDropdown(parent, width, height)
     height = height or 24
     local dd = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -261,36 +250,29 @@ function KS.CreateDropdown(parent, width, height)
     label:SetText("Select...")
     dd._label = label
 
-    -- Down arrow (simple triangle via font)
     local arrow = dd:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     arrow:SetPoint("RIGHT", -6, 0)
-    arrow:SetText("|cffaaaaaa\226\150\188|r") -- ▼ unicode
+    arrow:SetText("|cffaaaaaa\226\150\188|r")
 
     dd._items = {}
     dd._selectedValue = nil
     dd._onSelect = nil
 
-    -- Menu frame
     local menu = CreateFrame("Frame", nil, dd, "BackdropTemplate")
     menu:SetFrameStrata("DIALOG")
     menu:SetBackdrop(BACKDROP_PANEL)
     menu:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
     menu:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     menu:Hide()
-    dd._menu = menu
 
     local menuButtons = {}
-    dd._menuButtons = menuButtons
 
     local function CloseMenu()
         menu:Hide()
     end
 
     local function BuildMenu()
-        for _, mb in ipairs(menuButtons) do
-            mb:Hide()
-        end
-
+        for _, mb in ipairs(menuButtons) do mb:Hide() end
         local itemHeight = 20
         local count = #dd._items
         menu:SetSize(width, count * itemHeight + 4)
@@ -302,58 +284,35 @@ function KS.CreateDropdown(parent, width, height)
                 mb:SetHeight(itemHeight)
                 mb:SetPoint("TOPLEFT", 2, -(i - 1) * itemHeight - 2)
                 mb:SetPoint("TOPRIGHT", -2, -(i - 1) * itemHeight - 2)
-
-                -- Hover highlight
                 mb:SetBackdrop(BACKDROP_BUTTON)
                 mb:SetBackdropColor(0, 0, 0, 0)
                 mb:SetBackdropBorderColor(0, 0, 0, 0)
-                mb:SetScript("OnEnter", function(self)
-                    self:SetBackdropColor(0, 0.5, 0.8, 0.3)
-                end)
-                mb:SetScript("OnLeave", function(self)
-                    self:SetBackdropColor(0, 0, 0, 0)
-                end)
-
+                mb:SetScript("OnEnter", function(self) self:SetBackdropColor(0, 0.5, 0.8, 0.3) end)
+                mb:SetScript("OnLeave", function(self) self:SetBackdropColor(0, 0, 0, 0) end)
                 local txt = mb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
                 txt:SetPoint("LEFT", 4, 0)
                 txt:SetJustifyH("LEFT")
                 mb._text = txt
-
                 menuButtons[i] = mb
             end
-
             local mb = menuButtons[i]
             mb._text:SetText(item.text)
             mb:SetScript("OnClick", function()
                 dd._selectedValue = item.value
                 label:SetText(item.text)
                 CloseMenu()
-                if dd._onSelect then
-                    dd._onSelect(item.value, item.text, i)
-                end
+                if dd._onSelect then dd._onSelect(item.value, item.text, i) end
             end)
             mb:Show()
         end
     end
 
-    -- Hover effect on dropdown itself
-    dd:SetScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-    end)
-    dd:SetScript("OnLeave", function(self)
-        self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-    end)
-
+    dd:SetScript("OnEnter", function(self) self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1) end)
+    dd:SetScript("OnLeave", function(self) self:SetBackdropBorderColor(0.3, 0.3, 0.3, 1) end)
     dd:SetScript("OnMouseDown", function()
-        if menu:IsShown() then
-            CloseMenu()
-        else
-            BuildMenu()
-            menu:Show()
-        end
+        if menu:IsShown() then CloseMenu() else BuildMenu(); menu:Show() end
     end)
 
-    -- Click-away closer
     local closer = CreateFrame("Button", nil, menu)
     closer:SetAllPoints(UIParent)
     closer:SetFrameLevel(menu:GetFrameLevel() - 1)
@@ -362,28 +321,15 @@ function KS.CreateDropdown(parent, width, height)
     menu:HookScript("OnShow", function() closer:Show() end)
     menu:HookScript("OnHide", function() closer:Hide() end)
 
-    -- API
-    function dd:SetItems(items)
-        self._items = items
-    end
-
-    function dd:SetOnSelect(fn)
-        self._onSelect = fn
-    end
-
+    function dd:SetItems(items) self._items = items end
+    function dd:SetOnSelect(fn) self._onSelect = fn end
     function dd:SetSelected(value)
         self._selectedValue = value
         for _, item in ipairs(self._items) do
-            if item.value == value then
-                self._label:SetText(item.text)
-                return
-            end
+            if item.value == value then self._label:SetText(item.text); return end
         end
     end
-
-    function dd:GetSelected()
-        return self._selectedValue
-    end
+    function dd:GetSelected() return self._selectedValue end
 
     return dd
 end
@@ -391,23 +337,18 @@ end
 ---------------------------------------------------------------------------
 -- Slider
 ---------------------------------------------------------------------------
--- KS.CreateSlider(parent, label, min, max, step, width)
 function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
     width = width or 160
-
     local container = CreateFrame("Frame", nil, parent)
     container:SetSize(width, 40)
 
-    -- Label
     local label = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOPLEFT", 0, 0)
     label:SetText(labelText)
 
-    -- Value text
     local valText = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("TOPRIGHT", 0, 0)
 
-    -- Slider
     local slider = CreateFrame("Slider", nil, container, "OptionsSliderTemplate")
     slider:SetPoint("TOPLEFT", 0, -16)
     slider:SetPoint("TOPRIGHT", 0, -16)
@@ -416,37 +357,21 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
     slider:SetValueStep(step)
     slider:SetObeyStepOnDrag(true)
     slider:SetValue(minVal)
-
-    -- Hide default text
     slider.Low:SetText("")
     slider.High:SetText("")
     slider.Text:SetText("")
-
     valText:SetText(tostring(minVal))
 
     slider:SetScript("OnValueChanged", function(self, value)
         value = math.floor(value / step + 0.5) * step
         valText:SetText(tostring(value))
-        if container._onChange then
-            container._onChange(value)
-        end
+        if container._onChange then container._onChange(value) end
     end)
 
     container._slider = slider
-    container._valText = valText
-
-    -- API
-    function container:SetOnChange(fn)
-        self._onChange = fn
-    end
-
-    function container:SetValue(v)
-        self._slider:SetValue(v)
-    end
-
-    function container:GetValue()
-        return self._slider:GetValue()
-    end
+    function container:SetOnChange(fn) self._onChange = fn end
+    function container:SetValue(v) self._slider:SetValue(v) end
+    function container:GetValue() return self._slider:GetValue() end
 
     return container
 end
@@ -456,14 +381,10 @@ end
 ---------------------------------------------------------------------------
 function KS.ShowTooltip(owner, title, ...)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    if title then
-        GameTooltip:AddLine(title, 1, 1, 1)
-    end
+    if title then GameTooltip:AddLine(title, 1, 1, 1) end
     for i = 1, select("#", ...) do
         local line = select(i, ...)
-        if line then
-            GameTooltip:AddLine(line, 0.8, 0.8, 0.8, true)
-        end
+        if line then GameTooltip:AddLine(line, 0.8, 0.8, 0.8, true) end
     end
     GameTooltip:Show()
 end
@@ -472,8 +393,6 @@ function KS.HideTooltip()
     GameTooltip:Hide()
 end
 
--- Attach tooltip to a frame (convenience)
--- KS.AddTooltip(frame, title, line1, line2, ...)
 function KS.AddTooltip(frame, title, ...)
     local lines = { ... }
     frame:HookScript("OnEnter", function(self)
