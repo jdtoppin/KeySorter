@@ -130,7 +130,7 @@ function KS.CreateRosterView(parent)
     local prevBtn
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
         local btn = CreateFrame("Button", nil, filterBar, "UIPanelButtonTemplate")
-        btn:SetSize(60, 20)
+        btn:SetSize(56, 20)
         if prevBtn then
             btn:SetPoint("LEFT", prevBtn, "RIGHT", 2, 0)
         else

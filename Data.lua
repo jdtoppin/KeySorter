@@ -26,7 +26,10 @@ KS.SCORE_THRESHOLDS = {
     { label = "500-1k",  min = 500,  max = 999 },
     { label = "1k-1.5k", min = 1000, max = 1499 },
     { label = "1.5k-2k", min = 1500, max = 1999 },
-    { label = "2k+",     min = 2000, max = 99999 },
+    { label = "2k-2.5k", min = 2000, max = 2499 },
+    { label = "2.5k-3k", min = 2500, max = 2999 },
+    { label = "3k-3.5k", min = 3000, max = 3499 },
+    { label = "3.5k+",   min = 3500, max = 99999 },
 }
 
 -- Role icons (atlas)
