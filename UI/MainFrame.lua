@@ -1,4 +1,5 @@
 local addonName, KS = ...
+local AF = KS.AF
 
 local FRAME_WIDTH = 700
 local FRAME_HEIGHT = 500
@@ -25,10 +26,10 @@ function KS.CreateMainFrame()
     f:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
     f:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
 
-    -- Title bar drag
+    -- Title bar drag region (left portion only, so buttons on right remain clickable)
     local titleBar = CreateFrame("Frame", nil, f)
     titleBar:SetPoint("TOPLEFT", 0, 0)
-    titleBar:SetPoint("TOPRIGHT", 0, 0)
+    titleBar:SetPoint("TOPRIGHT", -250, 0) -- leave room for buttons on the right
     titleBar:SetHeight(30)
     titleBar:EnableMouse(true)
     titleBar:RegisterForDrag("LeftButton")
@@ -45,10 +46,10 @@ function KS.CreateMainFrame()
     title:SetText("KeySorter")
     title:SetTextColor(0, 0.8, 1)
 
-    -- Close button
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", -2, -2)
-    close:SetScript("OnClick", function() f:Hide() end)
+    -- Close button (AF style)
+    local close = AF.CreateButton(f, "X", "red", 24, 24)
+    AF.SetPoint(close, "TOPRIGHT", -6, -4)
+    close:SetOnClick(function() f:Hide() end)
 
     -- Tab buttons
     local activeTab = "roster"
@@ -64,36 +65,32 @@ function KS.CreateMainFrame()
             groupContent:Show()
         end
     end
+    KS.SetTab = SetTab
 
-    local rosterTab = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    rosterTab:SetSize(80, 24)
-    rosterTab:SetPoint("TOPLEFT", 12, -32)
-    rosterTab:SetText("Roster")
-    rosterTab:SetScript("OnClick", function() SetTab("roster") end)
+    local rosterTab = AF.CreateButton(f, "Roster", "accent", 80, 24)
+    AF.SetPoint(rosterTab, "TOPLEFT", 12, -32)
+    rosterTab:SetOnClick(function() SetTab("roster") end)
 
-    local groupTab = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    groupTab:SetSize(80, 24)
-    groupTab:SetPoint("LEFT", rosterTab, "RIGHT", 4, 0)
-    groupTab:SetText("Groups")
-    groupTab:SetScript("OnClick", function() SetTab("groups") end)
+    local groupTab = AF.CreateButton(f, "Groups", "accent", 80, 24)
+    AF.SetPoint(groupTab, "TOPLEFT", 96, -32)
+    groupTab:SetOnClick(function() SetTab("groups") end)
 
-    -- Scan button
-    local scanBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    scanBtn:SetSize(70, 24)
-    scanBtn:SetPoint("TOPRIGHT", close, "TOPLEFT", -40, -4)
-    scanBtn:SetText("Scan")
-    scanBtn:SetScript("OnClick", function()
+    -- Action buttons (right side of title bar)
+    local syncBtn = AF.CreateButton(f, "Sync", "blue", 64, 24)
+    AF.SetPoint(syncBtn, "TOPRIGHT", -36, -4)
+    syncBtn:SetOnClick(function() KS.SendSync() end)
+
+    local scanBtn = AF.CreateButton(f, "Scan", "green", 64, 24)
+    AF.SetPoint(scanBtn, "TOPRIGHT", -104, -4)
+    scanBtn:SetOnClick(function()
         KS.ScanRoster()
         SetTab("roster")
     end)
     KS.scanButton = scanBtn
 
-    -- Sort button
-    local sortBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    sortBtn:SetSize(70, 24)
-    sortBtn:SetPoint("RIGHT", scanBtn, "LEFT", -4, 0)
-    sortBtn:SetText("Sort")
-    sortBtn:SetScript("OnClick", function()
+    local sortBtn = AF.CreateButton(f, "Sort", "accent", 64, 24)
+    AF.SetPoint(sortBtn, "TOPRIGHT", -172, -4)
+    sortBtn:SetOnClick(function()
         if #KS.roster == 0 then
             KS.ScanRoster()
         end
@@ -102,12 +99,10 @@ function KS.CreateMainFrame()
     end)
     KS.sortButton = sortBtn
 
-    -- Sync button
-    local syncBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    syncBtn:SetSize(70, 24)
-    syncBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
-    syncBtn:SetText("Sync")
-    syncBtn:SetScript("OnClick", function() KS.SendSync() end)
+    -- About button
+    local aboutBtn = AF.CreateButton(f, "?", "gray_hover", 24, 24)
+    AF.SetPoint(aboutBtn, "TOPLEFT", 100, -8)
+    aboutBtn:SetOnClick(function() KS.ToggleAbout() end)
 
     -- Content containers
     rosterContent = CreateFrame("Frame", nil, f)

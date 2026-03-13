@@ -1,4 +1,5 @@
 local addonName, KS = ...
+local AF = KS.AF
 
 local CARD_WIDTH = 210
 local CARD_HEIGHT = 140
@@ -8,6 +9,7 @@ local MEMBER_HEIGHT = 18
 local scrollFrame, scrollChild
 local groupCards = {}
 local unassignedCard
+local noDataText
 
 local function GetClassColoredName(member)
     if not member then return "|cff888888(empty)|r" end
@@ -44,27 +46,18 @@ local function CreateMemberLine(parent, yOffset, label, member)
     line:SetPoint("TOPRIGHT", -8, yOffset)
     line:SetHeight(MEMBER_HEIGHT)
 
-    -- Role label
-    local roleText = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    roleText:SetPoint("LEFT", 0, 0)
-    roleText:SetWidth(14)
-
     local roleAtlas = KS.ROLE_ICONS[label]
     if roleAtlas then
         local icon = line:CreateTexture(nil, "OVERLAY")
         icon:SetSize(12, 12)
         icon:SetPoint("LEFT", 0, 0)
         icon:SetAtlas(roleAtlas)
-        line.roleIcon = icon
-        roleText:SetPoint("LEFT", 16, 0)
     end
 
-    -- Name + score
     local nameText = line:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     nameText:SetPoint("LEFT", 18, 0)
     nameText:SetText(GetClassColoredName(member) .. " " .. GetScoreString(member))
 
-    line.nameText = nameText
     return line
 end
 
@@ -95,7 +88,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     avgText:SetText(format("Avg: %d", avgScore))
     avgText:SetTextColor(0.7, 0.7, 0.7)
 
-    -- Utility icons
+    -- Utility coverage
     local utilText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     utilText:SetPoint("TOPRIGHT", -8, -20)
     utilText:SetText(GetGroupUtilityString(group))
@@ -110,7 +103,6 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
         CreateMemberLine(card, y, "DAMAGER", dps)
         y = y - MEMBER_HEIGHT
     end
-    -- Fill empty DPS slots
     for _ = #group.dps + 1, 3 do
         CreateMemberLine(card, y, "DAMAGER", nil)
         y = y - MEMBER_HEIGHT
@@ -180,12 +172,18 @@ function KS.UpdateGroupView()
         unassignedCard:SetParent(nil)
         unassignedCard = nil
     end
+    if noDataText then
+        noDataText:Hide()
+    end
 
     if #KS.groups == 0 then
-        local noData = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        noData:SetPoint("CENTER", 0, 0)
-        noData:SetText("No groups yet. Click Sort to generate groups.")
-        noData:SetTextColor(0.5, 0.5, 0.5)
+        if not noDataText then
+            noDataText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            noDataText:SetPoint("CENTER", 0, 0)
+            noDataText:SetTextColor(0.5, 0.5, 0.5)
+        end
+        noDataText:SetText("No groups yet. Click Sort to generate groups.")
+        noDataText:Show()
         scrollChild:SetHeight(100)
         return
     end

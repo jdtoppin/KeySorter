@@ -1,4 +1,5 @@
 local addonName, KS = ...
+local AF = KS.AF
 
 local ROW_HEIGHT = 20
 local HEADER_HEIGHT = 24
@@ -10,7 +11,7 @@ local filterIdx = 1
 
 local scrollFrame, scrollChild
 local rows = {}
-local headerButtons = {}
+local filterButtons = {}
 
 local COLUMNS = {
     { key = "name",       label = "Name",    width = 140, align = "LEFT" },
@@ -68,18 +69,29 @@ local function GetUtilityString(member)
     return table.concat(parts, " ")
 end
 
+local function UpdateFilterHighlights()
+    for i, btn in ipairs(filterButtons) do
+        if i == filterIdx then
+            btn:SetColor({"accent", "accent"})
+        else
+            btn:SetColor("widget")
+        end
+    end
+end
+
 local function CreateRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
     row:SetPoint("TOPRIGHT", 0, -(index - 1) * ROW_HEIGHT)
 
-    -- Highlight
+    -- Alternating row background
     local highlight = row:CreateTexture(nil, "BACKGROUND")
     highlight:SetAllPoints()
-    highlight:SetColorTexture(1, 1, 1, 0.05)
     if index % 2 == 0 then
         highlight:SetColorTexture(1, 1, 1, 0.03)
+    else
+        highlight:SetColorTexture(1, 1, 1, 0.05)
     end
 
     -- Mouseover highlight
@@ -98,8 +110,8 @@ local function CreateRow(parent, index)
         if col.align == "LEFT" then
             fs:SetPoint("LEFT", x, 0)
         elseif col.align == "RIGHT" then
-            fs:SetPoint("RIGHT", -(GetColumnX(#COLUMNS + 1) - x - col.width + 4), 0)
             fs:SetPoint("LEFT", x, 0)
+            fs:SetWidth(col.width - 4)
             fs:SetJustifyH("RIGHT")
         else
             fs:SetPoint("LEFT", x, 0)
@@ -129,19 +141,19 @@ function KS.CreateRosterView(parent)
 
     local prevBtn
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
-        local btn = CreateFrame("Button", nil, filterBar, "UIPanelButtonTemplate")
-        btn:SetSize(56, 20)
+        local btn = AF.CreateButton(filterBar, thresh.label, "widget", 56, 20)
         if prevBtn then
-            btn:SetPoint("LEFT", prevBtn, "RIGHT", 2, 0)
+            AF.SetPoint(btn, "LEFT", prevBtn, "RIGHT", 2, 0)
         else
-            btn:SetPoint("LEFT", filterLabel, "RIGHT", 6, 0)
+            AF.SetPoint(btn, "LEFT", filterLabel, "RIGHT", 6, 0)
         end
-        btn:SetText(thresh.label)
-        btn:SetScript("OnClick", function()
+        btn:SetOnClick(function()
             filterIdx = i
             KeySorterDB.filterIdx = i
+            UpdateFilterHighlights()
             KS.UpdateRosterView()
         end)
+        filterButtons[i] = btn
         prevBtn = btn
     end
 
@@ -156,18 +168,13 @@ function KS.CreateRosterView(parent)
     headerBg:SetColorTexture(0.2, 0.2, 0.2, 0.8)
 
     for ci, col in ipairs(COLUMNS) do
-        local btn = CreateFrame("Button", nil, headerBar)
+        local sortable = col.key ~= "utilities" and col.key ~= "role"
         local x = GetColumnX(ci)
-        btn:SetPoint("LEFT", x, 0)
-        btn:SetSize(col.width, HEADER_HEIGHT)
 
-        local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        text:SetPoint("LEFT", 2, 0)
-        text:SetText(col.label)
-        text:SetJustifyH(col.align)
-
-        if col.key ~= "utilities" and col.key ~= "role" then
-            btn:SetScript("OnClick", function()
+        if sortable then
+            local btn = AF.CreateButton(headerBar, col.label, "gray_hover", col.width, HEADER_HEIGHT)
+            AF.SetPoint(btn, "LEFT", x, 0)
+            btn:SetOnClick(function()
                 if sortField == col.key then
                     sortAsc = not sortAsc
                 else
@@ -176,10 +183,11 @@ function KS.CreateRosterView(parent)
                 end
                 KS.UpdateRosterView()
             end)
-            btn:SetHighlightTexture("Interface/Buttons/UI-Common-MouseHilight", "ADD")
+        else
+            local text = headerBar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            text:SetPoint("LEFT", x + 2, 0)
+            text:SetText(col.label)
         end
-
-        headerButtons[ci] = btn
     end
 
     -- Scroll frame
@@ -189,15 +197,15 @@ function KS.CreateRosterView(parent)
 
     scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetWidth(scrollFrame:GetWidth())
-    scrollChild:SetHeight(1) -- will be updated
+    scrollChild:SetHeight(1)
     scrollFrame:SetScrollChild(scrollChild)
 
-    -- Defer width update
     scrollFrame:SetScript("OnSizeChanged", function(self, w, h)
         scrollChild:SetWidth(w)
     end)
 
     filterIdx = KeySorterDB.filterIdx or 1
+    UpdateFilterHighlights()
 end
 
 function KS.UpdateRosterView()
