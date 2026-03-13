@@ -77,7 +77,7 @@ function KS.CreateMainFrame()
         SetTab("groups")
     end)
     KS.sortButton = sortBtn
-    KS.AddTooltip(sortBtn, "Sort Groups", "Group players by similar skill level.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
+    KS.AddTooltip(sortBtn, "Sort Groups", "Put like scores together so players of adequate skill level are in similar groups and can learn together.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
 
     local scanBtn = KS.CreateButton(titleBar, "Scan", "accent", 52, 20)
     scanBtn:SetPoint("RIGHT", sortBtn, "LEFT", -4, 0)
