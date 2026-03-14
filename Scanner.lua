@@ -184,5 +184,15 @@ function KS.ScanUnit(unit, name, raidIndex)
         entry.ilvl = inspectIlvl and math.floor(inspectIlvl) or 0
     end
 
+    -- Fall back to cached ilvl if we didn't get a live value
+    if entry.ilvl == 0 and KeySorterDB and KeySorterDB.ilvlCache and KeySorterDB.ilvlCache[name] then
+        entry.ilvl = KeySorterDB.ilvlCache[name]
+    end
+
+    -- Cache any live ilvl we got
+    if entry.ilvl > 0 and KeySorterDB and KeySorterDB.ilvlCache then
+        KeySorterDB.ilvlCache[name] = entry.ilvl
+    end
+
     table.insert(KS.roster, entry)
 end

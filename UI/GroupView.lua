@@ -309,16 +309,22 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     header:SetText(format("Group %d", groupIdx))
     header:SetTextColor(0, 0.8, 1)
 
+    -- Announce button (per-group)
+    local announceBtn = KS.CreateButton(card, "Announce", "widget", 52, 16)
+    announceBtn:SetPoint("TOPRIGHT", -6, -5)
+    announceBtn:SetOnClick(function() KS.AnnounceGroup(groupIdx) end)
+    KS.AddTooltip(announceBtn, "Announce Group", "Post this group's assignments to raid chat.")
+
     -- Average M+ score for the group
     local avgScore = KS.GroupScore(group)
     local avgText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    avgText:SetPoint("TOPRIGHT", -8, -6)
+    avgText:SetPoint("RIGHT", announceBtn, "LEFT", -6, 0)
     avgText:SetText(format("Avg: %d", avgScore))
     avgText:SetTextColor(0.7, 0.7, 0.7)
 
     -- Utility coverage (BR = battle rez, BL = bloodlust; dimmed if missing)
     local utilText = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    utilText:SetPoint("TOPRIGHT", -8, -20)
+    utilText:SetPoint("TOPRIGHT", -8, -24)
     utilText:SetText(GetGroupUtilityString(group))
 
     -- Members: 1 tank, 1 healer, N DPS

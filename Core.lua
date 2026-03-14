@@ -60,6 +60,10 @@ local function OnInspectReady(guid)
                 local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(member.unit)
                 if inspectIlvl and inspectIlvl > 0 then
                     member.ilvl = math.floor(inspectIlvl)
+                    -- Cache for future sessions
+                    if KeySorterDB and KeySorterDB.ilvlCache and member.name then
+                        KeySorterDB.ilvlCache[member.name] = member.ilvl
+                    end
                     if KS.UpdateRosterView then KS.UpdateRosterView() end
                 end
                 break
@@ -91,14 +95,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.point = KeySorterDB.point or { "CENTER", nil, "CENTER", 0, 0 }
             KeySorterDB.filterIdx = KeySorterDB.filterIdx or 1
             KeySorterDB.minimapPos = KeySorterDB.minimapPos or 225
+            KeySorterDB.ilvlCache = KeySorterDB.ilvlCache or {}
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
+        KS.ScanRoster()
         if KS.mainFrame and KS.mainFrame:IsShown() then
-            KS.ScanRoster()
             KS.UpdatePermissionState()
         end
         -- Queue inspects for ilvl when members join
@@ -119,10 +124,7 @@ end
 function KS.UpdatePermissionState()
     if not KS.mainFrame then return end
     local permitted = KS.IsPermitted()
-    if KS.scanButton then KS.scanButton:SetEnabled(permitted) end
     if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(permitted) end
-
-    if KS.announceButton then KS.announceButton:SetEnabled(permitted) end
     if KS.syncButton then KS.syncButton:SetEnabled(permitted) end
 end
 
@@ -145,10 +147,10 @@ end
 local function PrintHelp()
     print("|cff00ccffKeySorter|r commands:")
     print("  |cff00ff00/ks|r — toggle window")
-    print("  |cff00ff00/ks scan|r — scan raid roster")
     print("  |cff00ff00/ks sort|r — sort into groups")
     print("  |cff00ff00/ks apply|r — move players to raid subgroups")
-    print("  |cff00ff00/ks announce|r — post group assignments to raid chat")
+    print("  |cff00ff00/ks announce|r — post all groups to raid chat")
+    print("  |cff00ff00/ks announce N|r — post group N to raid chat")
     print("  |cff00ff00/ks sync|r — sync groups to assistants")
     print("  |cff00ff00/ks preview|r — open settings (preview mode)")
     print("  |cff00ff00/ks about|r — credits & license info")
@@ -162,11 +164,6 @@ SlashCmdList["KEYSORTER"] = function(msg)
 
     if cmd == "" then
         ToggleUI()
-    elseif cmd == "scan" then
-        KS.ScanRoster()
-        EnsureMainFrame()
-        KS.mainFrame:Show()
-        KS.UpdatePermissionState()
     elseif cmd == "sort" then
         if #KS.roster == 0 then KS.ScanRoster() end
         KS.SortGroups()
@@ -175,8 +172,18 @@ SlashCmdList["KEYSORTER"] = function(msg)
         KS.UpdatePermissionState()
     elseif cmd == "apply" then
         KS.ApplyGroups()
-    elseif cmd == "announce" then
-        KS.AnnounceGroups()
+    elseif cmd:match("^announce") then
+        local num = cmd:match("^announce%s+(%d+)$")
+        if num then
+            local idx = tonumber(num)
+            if idx and KS.groups[idx] then
+                KS.AnnounceGroup(idx)
+            else
+                print(format("|cff00ccffKeySorter|r: Group %s does not exist.", num))
+            end
+        else
+            for i = 1, #KS.groups do KS.AnnounceGroup(i) end
+        end
     elseif cmd == "sync" then
         KS.SendSync()
     elseif cmd == "preview" or cmd == "test" then

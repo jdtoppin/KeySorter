@@ -95,16 +95,8 @@ function KS.SortGroups()
         return (a.ilvl or 0) > (b.ilvl or 0)
     end)
 
-    if numNewGroups > 0 then
-        for i, extra in ipairs(extras) do
-            local groupIdx = ((i - 1) % numNewGroups) + 1
-            table.insert(newGroups[groupIdx].dps, extra)
-        end
-    else
-        -- No new groups possible, all extras are unassigned
-        for _, extra in ipairs(extras) do
-            table.insert(KS.unassigned, extra)
-        end
+    for _, extra in ipairs(extras) do
+        table.insert(KS.unassigned, extra)
     end
 
     -- Merge: locked groups first (preserve their positions), then new groups

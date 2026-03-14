@@ -125,7 +125,7 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     -- Create tabs
     ---------------------------------------------------------------------------
-    local rosterTabBtn, rosterContent, rosterToolbar = CreateTab("roster", "Roster", nil, true)
+    local rosterTabBtn, rosterContent = CreateTab("roster", "Roster", nil, false)
     local groupsTabBtn, groupContent, groupsToolbar = CreateTab("groups", "Groups", rosterTabBtn, true)
     -- About content (not a tab button — accessed via the title bar About button)
     local aboutContent = CreateFrame("Frame", nil, f)
@@ -133,17 +133,6 @@ function KS.CreateMainFrame()
     aboutContent:SetPoint("BOTTOMRIGHT", -8, 8)
     aboutContent:Hide()
     tabContents["about"] = aboutContent
-
-    ---------------------------------------------------------------------------
-    -- Roster toolbar: Scan, Sort
-    ---------------------------------------------------------------------------
-    local scanBtn = KS.CreateButton(rosterToolbar, "Scan", "accent", 52, 22)
-    scanBtn:SetPoint("LEFT", 6, 0)
-    scanBtn:SetOnClick(function()
-        KS.ScanRoster()
-    end)
-    KS.scanButton = scanBtn
-    KS.AddTooltip(scanBtn, "Scan Roster", "Collect M+ data for all group members.")
 
     ---------------------------------------------------------------------------
     -- Groups toolbar: Sort, Announce, Sync
@@ -159,14 +148,8 @@ function KS.CreateMainFrame()
     KS.sortButtonGroups = sortBtnGroups
     KS.AddTooltip(sortBtnGroups, "Sort Groups", "Sort players by skill level and automatically move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
 
-    local announceBtn = KS.CreateButton(groupsToolbar, "Announce", "accent", 68, 22)
-    announceBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 4, 0)
-    announceBtn:SetOnClick(function() KS.AnnounceGroups() end)
-    KS.announceButton = announceBtn
-    KS.AddTooltip(announceBtn, "Announce Groups", "Post group assignments to raid chat.")
-
     local syncBtn = KS.CreateButton(groupsToolbar, "Sync", "accent", 52, 22)
-    syncBtn:SetPoint("LEFT", announceBtn, "RIGHT", 4, 0)
+    syncBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 4, 0)
     syncBtn:SetOnClick(function() KS.SendSync() end)
     KS.syncButton = syncBtn
     KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
@@ -262,18 +245,17 @@ end
 ---------------------------------------------------------------------------
 -- Announce groups: post assignments to raid chat
 ---------------------------------------------------------------------------
-function KS.AnnounceGroups()
-    if #KS.groups == 0 then
-        print("|cff00ccffKeySorter|r: No groups to announce. Sort first.")
-        return
-    end
+function KS.AnnounceGroup(groupIdx)
+    local group = KS.groups[groupIdx]
+    if not group then return end
+
     if not KS.previewMode then
         if not IsInRaid() then
-            print("|cff00ccffKeySorter|r: Must be in a raid to announce groups.")
+            print("|cff00ccffKeySorter|r: Must be in a raid to announce.")
             return
         end
         if not KS.IsPermitted() then
-            print("|cff00ccffKeySorter|r: Only raid leader/assistants can announce groups.")
+            print("|cff00ccffKeySorter|r: Only raid leader/assistants can announce.")
             return
         end
     end
@@ -286,23 +268,9 @@ function KS.AnnounceGroups()
         end
     end
 
-    Output("--- KeySorter Group Assignments ---")
-    for groupIdx, group in ipairs(KS.groups) do
-        local names = {}
-        if group.tank then table.insert(names, group.tank.name .. " (T)") end
-        if group.healer then table.insert(names, group.healer.name .. " (H)") end
-        for _, d in ipairs(group.dps) do table.insert(names, d.name) end
-        Output(format("Group %d: %s", groupIdx, table.concat(names, ", ")))
-    end
-    if #KS.unassigned > 0 then
-        local unNames = {}
-        for _, u in ipairs(KS.unassigned) do table.insert(unNames, u.name) end
-        Output("Unassigned: " .. table.concat(unNames, ", "))
-    end
-
-    if KS.previewMode then
-        print("|cff00ccffKeySorter|r: Groups announced in chat (preview).")
-    else
-        print("|cff00ccffKeySorter|r: Groups announced in raid chat.")
-    end
+    local names = {}
+    if group.tank then table.insert(names, group.tank.name .. " (T)") end
+    if group.healer then table.insert(names, group.healer.name .. " (H)") end
+    for _, d in ipairs(group.dps) do table.insert(names, d.name) end
+    Output(format("Group %d: %s", groupIdx, table.concat(names, ", ")))
 end

@@ -367,7 +367,7 @@ function KS.CreateRosterView(parent)
     -- Timed runs filter
     local timedLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     timedLabel:SetPoint("LEFT", utilDD, "RIGHT", 8, 0)
-    timedLabel:SetText("Timed:")
+    timedLabel:SetText("Timed Runs:")
 
     local timedDD = KS.CreateDropdown(toolbar, 62, 22)
     timedDD:SetPoint("LEFT", timedLabel, "RIGHT", 4, 0)
