@@ -127,8 +127,12 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     local rosterTabBtn, rosterContent, rosterToolbar = CreateTab("roster", "Roster", nil, true)
     local groupsTabBtn, groupContent, groupsToolbar = CreateTab("groups", "Groups", rosterTabBtn, true)
-    local previewTabBtn, previewContent = CreateTab("preview", "Preview", groupsTabBtn, false)
-    local _, aboutContent = CreateTab("about", "About", previewTabBtn, false)
+    -- About content (not a tab button — accessed via the title bar About button)
+    local aboutContent = CreateFrame("Frame", nil, f)
+    aboutContent:SetPoint("TOPLEFT", 8, -(TITLEBAR_H + 2))
+    aboutContent:SetPoint("BOTTOMRIGHT", -8, 8)
+    aboutContent:Hide()
+    tabContents["about"] = aboutContent
 
     ---------------------------------------------------------------------------
     -- Roster toolbar: Scan, Sort
@@ -173,12 +177,10 @@ function KS.CreateMainFrame()
     KS.mainFrame = f
     KS.rosterContent = rosterContent
     KS.groupContent = groupContent
-    KS.previewContent = previewContent
     KS.aboutContent = aboutContent
 
     KS.CreateRosterView(rosterContent)
     KS.CreateGroupView(groupContent)
-    KS.CreatePreviewView(previewContent)
     KS.CreateAboutView(aboutContent)
 
     -- Resize handle (bottom-right corner)
@@ -212,54 +214,6 @@ function KS.CreateMainFrame()
     f:Hide()
 end
 
----------------------------------------------------------------------------
--- Preview tab content
----------------------------------------------------------------------------
-function KS.CreatePreviewView(parent)
-    local desc = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    desc:SetPoint("TOPLEFT", 8, -8)
-    desc:SetText("Preview / Test Mode")
-    desc:SetTextColor(0, 0.8, 1)
-
-    local subdesc = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    subdesc:SetPoint("TOPLEFT", 8, -28)
-    subdesc:SetPoint("RIGHT", -8, 0)
-    subdesc:SetJustifyH("LEFT")
-    subdesc:SetText("Generate fake raid data to test the UI without needing a group. Preview data is shown in the Roster and Groups tabs. Your real roster is restored when you turn preview off.")
-    subdesc:SetTextColor(0.7, 0.7, 0.7)
-
-    local statusText = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    statusText:SetPoint("TOPLEFT", 8, -64)
-    statusText:SetText("|cffff0000OFF|r")
-
-    local toggleBtn = KS.CreateButton(parent, "Enable Preview", "accent", 140, 28)
-    toggleBtn:SetPoint("TOPLEFT", 8, -86)
-    toggleBtn:SetOnClick(function()
-        KS.TogglePreview()
-        if KS.previewMode then
-            statusText:SetText("|cff00ff00ON|r — showing " .. (KS.previewPlayerCount or 25) .. " fake players")
-            toggleBtn:SetText("Disable Preview")
-        else
-            statusText:SetText("|cffff0000OFF|r")
-            toggleBtn:SetText("Enable Preview")
-        end
-    end)
-
-    -- Player count slider
-    local countSlider = KS.CreateSlider(parent, "Players", 5, 40, 5, 200)
-    countSlider:SetPoint("TOPLEFT", 8, -130)
-    countSlider:SetValue(25)
-    KS.previewPlayerCount = 25
-    countSlider:SetOnChange(function(val)
-        KS.previewPlayerCount = val
-        if KS.previewMode then
-            KS.GeneratePreviewData()
-            statusText:SetText("|cff00ff00ON|r — showing " .. val .. " fake players")
-            if KS.UpdateRosterView then KS.UpdateRosterView() end
-            if KS.UpdateGroupView then KS.UpdateGroupView() end
-        end
-    end)
-end
 
 ---------------------------------------------------------------------------
 -- Apply groups: move players into raid subgroups

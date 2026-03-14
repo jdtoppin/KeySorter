@@ -132,7 +132,19 @@ end
 function KS.ScanUnit(unit, name, raidIndex)
     local _, classFile = UnitClass(unit)
     local role = UnitGroupRolesAssigned(unit)
-    if role == "NONE" then role = "DAMAGER" end
+    if role == "NONE" then
+        -- Fall back to spec role when no group role is assigned
+        if UnitIsUnit(unit, "player") then
+            local specIdx = GetSpecialization()
+            if specIdx then
+                role = GetSpecializationRole(specIdx) or "DAMAGER"
+            else
+                role = "DAMAGER"
+            end
+        else
+            role = "DAMAGER"
+        end
+    end
 
     local entry = {
         name = name,

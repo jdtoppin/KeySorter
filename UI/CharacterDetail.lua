@@ -347,20 +347,18 @@ end
 local function EnsureDetailFrame()
     if detailFrame then return end
 
-    detailFrame = CreateFrame("Frame", nil, KS.mainFrame)
-    detailFrame:SetPoint("TOPLEFT", 8, -30)
-    detailFrame:SetPoint("BOTTOMRIGHT", -8, 8)
+    detailFrame = CreateFrame("Frame", nil, KS.mainFrame, "BackdropTemplate")
+    detailFrame:SetPoint("TOPLEFT", 1, -29)
+    detailFrame:SetPoint("BOTTOMRIGHT", -1, 1)
     detailFrame:SetFrameLevel(KS.mainFrame:GetFrameLevel() + 10)
+    detailFrame:SetBackdrop(KS.BACKDROP_PANEL)
+    detailFrame:SetBackdropColor(0.08, 0.08, 0.08, 1)
+    detailFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     detailFrame:Hide()
-
-    -- Opaque background to cover the tab content beneath
-    local bg = detailFrame:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.08, 0.08, 0.08, 1)
 
     -- Back button
     local backBtn = KS.CreateButton(detailFrame, "< Back", "widget", 60, 22)
-    backBtn:SetPoint("TOPLEFT", 0, 0)
+    backBtn:SetPoint("TOPLEFT", 8, -6)
     backBtn:SetOnClick(function()
         KS.HideCharacterDetail()
     end)
@@ -378,8 +376,8 @@ local function EnsureDetailFrame()
 
     -- Scroll area below the header bar
     local scrollParent = CreateFrame("Frame", nil, detailFrame)
-    scrollParent:SetPoint("TOPLEFT", 0, -28)
-    scrollParent:SetPoint("BOTTOMRIGHT", 0, 0)
+    scrollParent:SetPoint("TOPLEFT", 8, -32)
+    scrollParent:SetPoint("BOTTOMRIGHT", -8, 8)
 
     scrollFrame, scrollChild = KS.CreateScrollFrame(scrollParent, "KeySorterCharDetailScroll")
 end

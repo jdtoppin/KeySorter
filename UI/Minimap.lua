@@ -24,10 +24,10 @@ function KS.CreateMinimapButton()
     label:SetPoint("CENTER", 0, 0)
     label:SetText("|cff00ccffKS|r")
 
-    -- Standard circular minimap border overlay
+    -- Standard circular minimap border overlay (texture has built-in offset)
     local overlay = btn:CreateTexture(nil, "OVERLAY")
     overlay:SetSize(54, 54)
-    overlay:SetPoint("CENTER", 0, 0)
+    overlay:SetPoint("TOPLEFT", -2, 2)
     overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 
     -- Highlight texture (standard minimap button glow on hover)

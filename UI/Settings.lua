@@ -15,7 +15,7 @@ end
 
 function KS.CreateSettingsFrame()
     settingsFrame = CreateFrame("Frame", "KeySorterSettingsFrame", UIParent, "BackdropTemplate")
-    settingsFrame:SetSize(360, 340)
+    settingsFrame:SetSize(360, 480)
     settingsFrame:SetFrameStrata("DIALOG")
     settingsFrame:SetMovable(true)
     settingsFrame:EnableMouse(true)
@@ -77,6 +77,54 @@ function KS.CreateSettingsFrame()
         return row
     end
 
+    ---------------------------------------------------------------------------
+    -- Preview Mode
+    ---------------------------------------------------------------------------
+    AddSettingLabel("Preview Mode", 0, 0.8, 1, "GameFontNormal")
+
+    local previewDesc = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    previewDesc:SetPoint("TOPLEFT", 16, y)
+    previewDesc:SetPoint("TOPRIGHT", -16, y)
+    previewDesc:SetJustifyH("LEFT")
+    previewDesc:SetText("Generate fake raid data to test the UI without a group.")
+    previewDesc:SetTextColor(0.6, 0.6, 0.6)
+    y = y - 20
+
+    local previewStatus = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    previewStatus:SetPoint("TOPLEFT", 16, y)
+    previewStatus:SetText(KS.previewMode and "|cff00ff00ON|r" or "|cffff0000OFF|r")
+
+    local toggleBtn = KS.CreateButton(settingsFrame, KS.previewMode and "Disable" or "Enable", "accent", 70, 22)
+    toggleBtn:SetPoint("LEFT", previewStatus, "RIGHT", 12, 0)
+    toggleBtn:SetOnClick(function()
+        KS.TogglePreview()
+        if KS.previewMode then
+            previewStatus:SetText("|cff00ff00ON|r")
+            toggleBtn:SetText("Disable")
+        else
+            previewStatus:SetText("|cffff0000OFF|r")
+            toggleBtn:SetText("Enable")
+        end
+    end)
+    y = y - 30
+
+    -- Player count slider
+    local countSlider = KS.CreateSlider(settingsFrame, "Player Count", 5, 40, 5, 200)
+    countSlider:SetPoint("TOPLEFT", 16, y)
+    countSlider:SetValue(KS.previewPlayerCount or 25)
+    countSlider:SetOnChange(function(val)
+        KS.previewPlayerCount = val
+        if KS.previewMode then
+            KS.GeneratePreviewData()
+            if KS.UpdateRosterView then KS.UpdateRosterView() end
+            if KS.UpdateGroupView then KS.UpdateGroupView() end
+        end
+    end)
+    y = y - 48
+
+    ---------------------------------------------------------------------------
+    -- General
+    ---------------------------------------------------------------------------
     AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
     AddSettingRow("Season Dungeon Pool", "|cff666666Coming Soon|r")
     AddSettingRow("Font", "|cff666666Coming Soon|r")

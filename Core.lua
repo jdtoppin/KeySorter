@@ -150,7 +150,7 @@ local function PrintHelp()
     print("  |cff00ff00/ks apply|r — move players to raid subgroups")
     print("  |cff00ff00/ks announce|r — post group assignments to raid chat")
     print("  |cff00ff00/ks sync|r — sync groups to assistants")
-    print("  |cff00ff00/ks preview|r — toggle preview mode")
+    print("  |cff00ff00/ks preview|r — open settings (preview mode)")
     print("  |cff00ff00/ks about|r — credits & license info")
     print("  |cff00ff00/ks help|r — show this help")
 end
@@ -181,7 +181,7 @@ SlashCmdList["KEYSORTER"] = function(msg)
         KS.SendSync()
     elseif cmd == "preview" or cmd == "test" then
         EnsureMainFrame()
-        KS.TogglePreview()
+        KS.ToggleSettings()
     elseif cmd == "about" or cmd == "credits" then
         EnsureMainFrame()
         KS.ToggleAbout()
