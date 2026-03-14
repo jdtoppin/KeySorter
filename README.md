@@ -47,13 +47,21 @@ Built for raid leaders who organize weekly M+ events and need to quickly form ba
 
 ## How Sorting Works
 
+Two sort modes are available via a toggle on the Groups toolbar:
+
+- **Skill Matched** (default) — Groups players of similar skill level together. The highest-scored tank, healer, and top 3 DPS form Group 1, the next best form Group 2, and so on.
+- **Balanced** — Distributes skill levels evenly across groups using a snake draft (1→N, N→1, repeat), so each group gets a mix of high and low scorers.
+
+Both modes share these steps:
+
 1. Players are separated into three pools: Tanks, Healers, and DPS
 2. Each pool is sorted by M+ score (descending), with item level as a tiebreaker
 3. The number of groups is determined by the scarcest role — the maximum number of complete groups that can be formed with 1 tank, 1 healer, and 3 DPS each
-4. Players are assigned by skill tier — the highest-scored tank, healer, and top 3 DPS form Group 1, the next best form Group 2, and so on
-5. If the raid is not a perfect multiple of 5, extra players go to the Unassigned section (raid subgroups hold a maximum of 5)
-6. A utility balancing pass checks each group for battle rez and bloodlust coverage — if a group is missing a utility, the algorithm swaps a DPS with another group that has a surplus, preferring adjacent groups and staying within a score threshold
-7. Locked groups are fully excluded from the sort and utility pass, preserving their exact composition
+4. Tanks and healers are assigned in order (highest score to Group 1, etc.)
+5. DPS are distributed according to the selected sort mode
+6. If the raid is not a perfect multiple of 5, extra players go to the Unassigned section (raid subgroups hold a maximum of 5)
+7. A utility balancing pass checks each group for battle rez and bloodlust coverage — if a group is missing a utility, the algorithm swaps a DPS with another group that has a surplus, preferring adjacent groups and staying within a score threshold
+8. Locked groups are fully excluded from the sort and utility pass, preserving their exact composition
 
 ## Data Sources
 
