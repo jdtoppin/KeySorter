@@ -61,7 +61,7 @@ function KS.CreateMainFrame()
     -- About button (switches to about tab)
     local aboutBtn = KS.CreateButton(titleBar, "About", "gray_hover", 44, 20)
     aboutBtn:SetPoint("RIGHT", settingsBtn, "LEFT", -4, 0)
-    aboutBtn:SetOnClick(function() SetTabInternal("about") end)
+    aboutBtn:SetOnClick(function() KS.SetTab("about") end)
     KS.AddTooltip(aboutBtn, "About KeySorter", "View overview, sort logic, and command reference.")
 
     ---------------------------------------------------------------------------

@@ -161,7 +161,7 @@ end
 -- Member line creation (with drag support)
 ---------------------------------------------------------------------------
 local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, slotIdx)
-    local line = CreateFrame("Frame", nil, parent)
+    local line = CreateFrame("Button", nil, parent)
     line:SetPoint("TOPLEFT", 8, yOffset)
     line:SetPoint("TOPRIGHT", -8, yOffset)
     line:SetHeight(MEMBER_HEIGHT)
