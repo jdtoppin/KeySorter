@@ -141,6 +141,7 @@ function KS.SortGroups()
     print(format("|cff00ccffKeySorter|r: Formed %d group(s)%s, %d unassigned.", totalGroups, lockMsg, #KS.unassigned))
 
     if KS.UpdateGroupView then KS.UpdateGroupView() end
+    KS.AutoSync()
 end
 
 ---------------------------------------------------------------------------

@@ -150,8 +150,9 @@ local function StopDrag(line)
         SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
         SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
 
-        -- Rebuild the view
+        -- Rebuild the view and auto-sync
         KS.UpdateGroupView()
+        KS.AutoSync()
     end
 
     dragSource = nil

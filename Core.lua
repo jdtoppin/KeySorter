@@ -125,7 +125,6 @@ function KS.UpdatePermissionState()
     if not KS.mainFrame then return end
     local permitted = KS.IsPermitted()
     if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(permitted) end
-    if KS.syncButton then KS.syncButton:SetEnabled(permitted) end
 end
 
 local function EnsureMainFrame()
@@ -151,7 +150,7 @@ local function PrintHelp()
     print("  |cff00ff00/ks apply|r — move players to raid subgroups")
     print("  |cff00ff00/ks announce|r — post all groups to raid chat")
     print("  |cff00ff00/ks announce N|r — post group N to raid chat")
-    print("  |cff00ff00/ks sync|r — sync groups to assistants")
+    print("  |cff00ff00/ks sync|r — force sync groups to assistants (normally automatic)")
     print("  |cff00ff00/ks preview|r — open settings (preview mode)")
     print("  |cff00ff00/ks about|r — credits & license info")
     print("  |cff00ff00/ks help|r — show this help")

@@ -148,12 +148,6 @@ function KS.CreateMainFrame()
     KS.sortButtonGroups = sortBtnGroups
     KS.AddTooltip(sortBtnGroups, "Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
 
-    local syncBtn = KS.CreateButton(groupsToolbar, "Sync", "accent", 52, 22)
-    syncBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 4, 0)
-    syncBtn:SetOnClick(function() KS.SendSync() end)
-    KS.syncButton = syncBtn
-    KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
-
     -- Sort mode toggle button
     local function GetSortModeLabel()
         for _, mode in ipairs(KS.SORT_MODES) do
@@ -162,7 +156,7 @@ function KS.CreateMainFrame()
         return "Skill Matched"
     end
     local sortModeBtn = KS.CreateButton(groupsToolbar, GetSortModeLabel(), "widget", 100, 22)
-    sortModeBtn:SetPoint("LEFT", syncBtn, "RIGHT", 8, 0)
+    sortModeBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 8, 0)
     sortModeBtn:SetOnClick(function()
         -- Cycle to next sort mode
         local keys = {}

@@ -15,7 +15,7 @@ Built for raid leaders who organize weekly M+ events and need to quickly form ba
 - **Per-Group Announce** — Announce each group independently to raid chat, useful when cycling players in and out during large events
 - **Score & Role Filters** — Filter the roster by score range, role, class utility, or minimum timed runs
 - **Item Level Caching** — Persists item level data across sessions via SavedVariables, so returning players show their ilvl immediately even before inspect range
-- **Leader Sync** — Broadcast group assignments to raid assistants via addon comms
+- **Auto-Sync** — Automatically broadcasts group assignments to raid assistants via addon comms after every sort and drag-and-drop swap
 - **Permission Gated** — Sort, apply, sync, and announce are restricted to raid leaders and assistants
 - **Preview Mode** — Generate fake raid data (1-40 players) to test the UI and sort algorithm without being in a raid. Configure in Settings
 - **Minimap Button** — Standard circular minimap button with tracking border for quick access
@@ -29,7 +29,7 @@ Built for raid leaders who organize weekly M+ events and need to quickly form ba
 5. Switch to the **Groups** tab and click **Sort** to generate balanced groups and move players into raid subgroups
 6. Lock groups you're happy with, then re-sort as new players join
 7. Click the **Announce** button on each group card to post that group to raid chat
-8. Use **Sync** to share assignments with other assistants
+8. Group assignments are automatically synced to other assistants with the addon
 
 ## Commands
 
@@ -40,7 +40,7 @@ Built for raid leaders who organize weekly M+ events and need to quickly form ba
 | `/ks apply` | Move players to raid subgroups |
 | `/ks announce` | Post all groups to raid chat |
 | `/ks announce N` | Post group N to raid chat |
-| `/ks sync` | Sync groups to assistants |
+| `/ks sync` | Force sync groups to assistants (normally automatic) |
 | `/ks preview` | Open settings (preview mode) |
 | `/ks about` | Show overview and command reference |
 | `/ks help` | Print command list to chat |

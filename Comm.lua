@@ -64,6 +64,17 @@ function KS.SendSync()
     print("|cff00ccffKeySorter|r: Groups synced to raid.")
 end
 
+-- Auto-sync: silently send group data if in a raid with permission
+function KS.AutoSync()
+    if KS.previewMode then return end
+    if not IsInRaid() then return end
+    if not KS.IsPermitted() then return end
+    if #KS.groups == 0 then return end
+
+    local data = KS.SerializeGroups()
+    C_ChatInfo.SendAddonMessage(PREFIX, data, "RAID")
+end
+
 function KS.HandleCommMessage(msg, sender)
     local parts = { strsplit("|", msg) }
     if parts[1] ~= SYNC_MSG then return end
