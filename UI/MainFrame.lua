@@ -146,13 +146,41 @@ function KS.CreateMainFrame()
         if KS.UpdateGroupView then KS.UpdateGroupView() end
     end)
     KS.sortButtonGroups = sortBtnGroups
-    KS.AddTooltip(sortBtnGroups, "Sort Groups", "Sort players by skill level and automatically move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
+    KS.AddTooltip(sortBtnGroups, "Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible.")
 
     local syncBtn = KS.CreateButton(groupsToolbar, "Sync", "accent", 52, 22)
     syncBtn:SetPoint("LEFT", sortBtnGroups, "RIGHT", 4, 0)
     syncBtn:SetOnClick(function() KS.SendSync() end)
     KS.syncButton = syncBtn
     KS.AddTooltip(syncBtn, "Sync Groups", "Broadcast group assignments to raid assistants.")
+
+    -- Sort mode toggle button
+    local function GetSortModeLabel()
+        for _, mode in ipairs(KS.SORT_MODES) do
+            if mode.key == KS.sortMode then return mode.label end
+        end
+        return "Skill Matched"
+    end
+    local sortModeBtn = KS.CreateButton(groupsToolbar, GetSortModeLabel(), "widget", 100, 22)
+    sortModeBtn:SetPoint("LEFT", syncBtn, "RIGHT", 8, 0)
+    sortModeBtn:SetOnClick(function()
+        -- Cycle to next sort mode
+        local keys = {}
+        for _, mode in ipairs(KS.SORT_MODES) do table.insert(keys, mode.key) end
+        local current = 1
+        for i, k in ipairs(keys) do
+            if k == KS.sortMode then current = i; break end
+        end
+        KS.sortMode = keys[(current % #keys) + 1]
+        sortModeBtn:SetText(GetSortModeLabel())
+    end)
+    local function GetSortModeTooltipDesc()
+        for _, mode in ipairs(KS.SORT_MODES) do
+            if mode.key == KS.sortMode then return mode.desc end
+        end
+        return ""
+    end
+    KS.AddTooltip(sortModeBtn, "Sort Mode", "Click to toggle sort algorithm.", "Current: " .. GetSortModeLabel())
 
     ---------------------------------------------------------------------------
     -- Store references and build views

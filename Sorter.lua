@@ -64,18 +64,34 @@ function KS.SortGroups()
         newGroups[i] = { tank = nil, healer = nil, dps = {} }
     end
 
-    -- Step 4: Skill-matched grouping
+    -- Step 4: Assign tanks and healers (same for both modes)
     for i = 1, numNewGroups do
         newGroups[i].tank = tanks[i]
         newGroups[i].healer = healers[i]
     end
 
-    -- DPS: fill 3 per group first (core slots)
+    -- DPS: fill 3 per group using the selected sort mode
     local dpsNeeded = numNewGroups * 3
     local dpsToAssign = math.min(#dps, dpsNeeded)
-    for i = 1, dpsToAssign do
-        local groupIdx = math.ceil(i / 3)
-        table.insert(newGroups[groupIdx].dps, dps[i])
+
+    if KS.sortMode == "balanced" then
+        -- Snake draft: 1→N, N→1, repeat — distributes skill evenly across groups
+        local groupIdx = 1
+        local direction = 1
+        for i = 1, dpsToAssign do
+            table.insert(newGroups[groupIdx].dps, dps[i])
+            if (direction == 1 and groupIdx == numNewGroups) or (direction == -1 and groupIdx == 1) then
+                direction = direction * -1
+            else
+                groupIdx = groupIdx + direction
+            end
+        end
+    else
+        -- Skill matched: top 3 DPS to group 1, next 3 to group 2, etc.
+        for i = 1, dpsToAssign do
+            local groupIdx = math.ceil(i / 3)
+            table.insert(newGroups[groupIdx].dps, dps[i])
+        end
     end
 
     -- Step 4b: Distribute extras across new groups

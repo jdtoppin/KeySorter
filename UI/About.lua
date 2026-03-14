@@ -53,12 +53,20 @@ function KS.CreateAboutView(parent)
 
     ---------------------------------------------------------------------------
     AddHeading("Sort Logic")
+    AddText("Two sort modes are available (toggle on the Groups toolbar):")
+    AddSpacer()
+    AddText("|cffffffffSkill Matched|r — Groups players of similar skill level together. The highest-scored tank, healer, and top 3 DPS form Group 1, the next best form Group 2, and so on.")
+    AddText("|cffffffffBalanced|r — Distributes skill levels evenly across groups using a snake draft (1 to N, N to 1, repeat), so each group gets a mix of high and low scorers.")
+    AddSpacer()
+    AddText("Both modes share these steps:")
     AddText("1. Players are separated into three pools: Tanks, Healers, and DPS.")
     AddText("2. Each pool is sorted by M+ score (descending), with item level as a tiebreaker.")
     AddText("3. The number of groups is determined by the scarcest role: the maximum number of complete groups that can be formed with 1 tank, 1 healer, and 3 DPS each.")
-    AddText("4. Players are assigned by skill tier — the highest-scored tank, healer, and top 3 DPS form Group 1, the next best form Group 2, and so on. This keeps players of similar skill level together.")
-    AddText("5. If the raid is not a perfect multiple of 5, extra players are distributed round-robin across groups as additional members rather than being left unassigned.")
-    AddText("6. A utility balancing pass then checks each group for battle rez and bloodlust coverage. If a group is missing a utility, the algorithm tries to swap a DPS with another group that has a surplus — preferring swaps between adjacent groups (similar skill tier) and only allowing swaps within a score threshold to avoid disrupting skill balance.")
+    AddText("4. Tanks and healers are assigned in order (highest score to Group 1, etc.).")
+    AddText("5. DPS are distributed according to the selected mode.")
+    AddText("6. If the raid is not a perfect multiple of 5, extra players go to the Unassigned section.")
+    AddText("7. A utility balancing pass checks each group for battle rez and bloodlust coverage. If a group is missing a utility, the algorithm tries to swap a DPS with another group that has a surplus — preferring swaps between adjacent groups and only allowing swaps within a score threshold.")
+    AddText("8. Locked groups are fully excluded from sorting and utility balancing, preserving their exact composition.")
     AddSpacer()
 
     ---------------------------------------------------------------------------
