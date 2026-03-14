@@ -15,5 +15,7 @@ Comm.lua
 UI/MainFrame.lua
 UI/RosterView.lua
 UI/GroupView.lua
+UI/CharacterDetail.lua
 UI/About.lua
+UI/Settings.lua
 UI/Minimap.lua

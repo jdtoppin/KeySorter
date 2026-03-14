@@ -49,15 +49,15 @@ KS.DUNGEON_IDS = { 507, 508, 509, 510, 511, 512, 513, 514 }
 
 -- Item level color gradient anchors (WoW quality colors)
 -- Midnight Season 1 — adjust ILVL_MAX if mythic raid cap differs
-KS.ILVL_MAX = 290
+KS.ILVL_MAX = 289
 KS.ILVL_COLORS = {
     -- { ilvl, r, g, b }
     -- Smooth gradient: Gray → Green → Blue → Purple
-    { ilvl = 220, r = 0.62, g = 0.62, b = 0.62 },  -- Gray (poor / fresh max level)
-    { ilvl = 240, r = 0.12, g = 1.00, b = 0.00 },  -- Green (uncommon / normal dungeon)
-    { ilvl = 258, r = 0.00, g = 0.44, b = 0.87 },  -- Blue (rare / heroic dungeon / low M+)
-    { ilvl = 275, r = 0.39, g = 0.33, b = 0.90 },  -- Blue-purple (high M+ / normal raid)
-    { ilvl = 290, r = 0.64, g = 0.21, b = 0.93 },  -- Purple (epic / mythic raid)
+    { ilvl = 207, r = 0.62, g = 0.62, b = 0.62 },  -- Gray (poor / fresh max level)
+    { ilvl = 230, r = 0.12, g = 1.00, b = 0.00 },  -- Green (uncommon / normal dungeon)
+    { ilvl = 250, r = 0.00, g = 0.44, b = 0.87 },  -- Blue (rare / heroic dungeon / low M+)
+    { ilvl = 270, r = 0.39, g = 0.33, b = 0.90 },  -- Blue-purple (high M+ / normal raid)
+    { ilvl = 289, r = 0.64, g = 0.21, b = 0.93 },  -- Purple (epic / mythic raid)
 }
 
 -- Role icons (atlas)

@@ -54,7 +54,7 @@ function KS.SortGroups()
         KS.groups[i].healer = healers[i]
     end
 
-    -- DPS: sequential fill (top 3 DPS → group 1, next 3 → group 2, etc.)
+    -- DPS: fill 3 per group first (core slots)
     local dpsNeeded = numGroups * 3
     local dpsToAssign = math.min(#dps, dpsNeeded)
     for i = 1, dpsToAssign do
@@ -62,15 +62,31 @@ function KS.SortGroups()
         table.insert(KS.groups[groupIdx].dps, dps[i])
     end
 
-    -- Leftover tanks/healers/DPS
+    -- Step 4b: Distribute extras across groups (non-perfect multiples of 5)
+    -- Extra tanks beyond numGroups become additional members in lower-scored groups
+    -- Extra healers become additional members in lower-scored groups
+    -- Extra DPS beyond 3-per-group are spread round-robin starting from the lowest group
+    local extras = {}
     for i = numGroups + 1, #tanks do
-        table.insert(KS.unassigned, tanks[i])
+        table.insert(extras, tanks[i])
     end
     for i = numGroups + 1, #healers do
-        table.insert(KS.unassigned, healers[i])
+        table.insert(extras, healers[i])
     end
     for i = dpsToAssign + 1, #dps do
-        table.insert(KS.unassigned, dps[i])
+        table.insert(extras, dps[i])
+    end
+
+    -- Sort extras by score descending so highest-rated extras go to the best groups
+    table.sort(extras, function(a, b)
+        if a.score ~= b.score then return a.score > b.score end
+        return (a.ilvl or 0) > (b.ilvl or 0)
+    end)
+
+    -- Distribute round-robin starting from group 1
+    for i, extra in ipairs(extras) do
+        local groupIdx = ((i - 1) % numGroups) + 1
+        table.insert(KS.groups[groupIdx].dps, extra)
     end
 
     -- Step 5: Utility balancing pass (swap DPS between groups to cover BR/BL)

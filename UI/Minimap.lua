@@ -1,6 +1,6 @@
 local addonName, KS = ...
 
-local BUTTON_SIZE = 32
+local BUTTON_SIZE = 33
 local MINIMAP_RADIUS = 80
 
 function KS.CreateMinimapButton()
@@ -13,38 +13,39 @@ function KS.CreateMinimapButton()
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:RegisterForDrag("LeftButton")
 
-    -- Squared background
-    local bg = btn:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.1, 0.1, 0.1, 0.85)
+    -- Icon background (circular area behind the label)
+    local icon = btn:CreateTexture(nil, "BACKGROUND")
+    icon:SetSize(21, 21)
+    icon:SetPoint("CENTER", 0, 0)
+    icon:SetColorTexture(0.08, 0.08, 0.08, 1)
 
-    -- Border
-    local border = btn:CreateTexture(nil, "BORDER")
-    border:SetPoint("TOPLEFT", -1, 1)
-    border:SetPoint("BOTTOMRIGHT", 1, -1)
-    border:SetColorTexture(0.3, 0.3, 0.3, 1)
-
-    -- Inner bg (on top of border to create border effect)
-    local inner = btn:CreateTexture(nil, "ARTWORK")
-    inner:SetAllPoints()
-    inner:SetColorTexture(0.1, 0.1, 0.1, 0.85)
-
-    -- "KS" text label
-    local label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    -- "KS" text label as the icon
+    local label = btn:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     label:SetPoint("CENTER", 0, 0)
     label:SetText("|cff00ccffKS|r")
 
-    -- Hover effect
+    -- Standard circular minimap border overlay
+    local overlay = btn:CreateTexture(nil, "OVERLAY")
+    overlay:SetSize(54, 54)
+    overlay:SetPoint("CENTER", 0, 0)
+    overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+    -- Highlight texture (standard minimap button glow on hover)
+    local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetSize(24, 24)
+    highlight:SetPoint("CENTER", 0, 0)
+    highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    highlight:SetBlendMode("ADD")
+
+    -- Tooltip
     btn:SetScript("OnEnter", function(self)
-        inner:SetColorTexture(0.15, 0.15, 0.15, 0.95)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("KeySorter", 0, 0.8, 1)
         GameTooltip:AddLine("|cffccccccLeft-click|r toggle window", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("|cffccccccRight-click|r about", 0.8, 0.8, 0.8)
         GameTooltip:Show()
     end)
-    btn:SetScript("OnLeave", function(self)
-        inner:SetColorTexture(0.1, 0.1, 0.1, 0.85)
+    btn:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
 
@@ -59,7 +60,6 @@ function KS.CreateMinimapButton()
 
     -- Drag to reposition around minimap
     btn:SetScript("OnDragStart", function(self)
-        self._dragging = true
         self:SetScript("OnUpdate", function(self)
             local mx, my = Minimap:GetCenter()
             local cx, cy = GetCursorPosition()
@@ -76,7 +76,6 @@ function KS.CreateMinimapButton()
     end)
 
     btn:SetScript("OnDragStop", function(self)
-        self._dragging = false
         self:SetScript("OnUpdate", nil)
     end)
 

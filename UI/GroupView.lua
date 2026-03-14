@@ -10,6 +10,13 @@ local groupCards = {}
 local unassignedCard
 local noDataText
 
+---------------------------------------------------------------------------
+-- Drag and drop state
+---------------------------------------------------------------------------
+local dragCursor       -- floating frame showing dragged member name
+local dragSource       -- { groupIdx, slot, slotIdx, member } of the dragged member
+local allMemberLines = {} -- all active member line frames (for hit detection)
+
 local function GetClassColoredName(member)
     if not member then return "|cff888888(empty)|r" end
     local color = KS.CLASS_COLORS[member.classFile]
@@ -39,11 +46,126 @@ local function GetGroupUtilityString(group)
     return table.concat(parts, " ")
 end
 
-local function CreateMemberLine(parent, yOffset, label, member)
+---------------------------------------------------------------------------
+-- Drag cursor: floating frame that follows the mouse
+---------------------------------------------------------------------------
+local function GetOrCreateDragCursor()
+    if dragCursor then return dragCursor end
+
+    dragCursor = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    dragCursor:SetSize(160, 20)
+    dragCursor:SetFrameStrata("TOOLTIP")
+    dragCursor:SetBackdrop(KS.BACKDROP_PANEL)
+    dragCursor:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    dragCursor:SetBackdropBorderColor(0, 0.8, 1, 1)
+
+    dragCursor.text = dragCursor:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    dragCursor.text:SetPoint("CENTER")
+
+    dragCursor:Hide()
+    return dragCursor
+end
+
+local function StartDrag(line)
+    if not line._member then return end
+
+    dragSource = {
+        groupIdx = line._groupIdx,
+        slot = line._slot,        -- "tank", "healer", or "dps"
+        slotIdx = line._slotIdx,  -- index within dps array (nil for tank/healer)
+        member = line._member,
+    }
+
+    local cursor = GetOrCreateDragCursor()
+    cursor.text:SetText(GetClassColoredName(dragSource.member))
+    cursor:Show()
+
+    -- Highlight source line
+    if not line._highlightTex then
+        line._highlightTex = line:CreateTexture(nil, "BACKGROUND")
+        line._highlightTex:SetAllPoints()
+        line._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
+    end
+    line._highlightTex:Show()
+end
+
+local function UpdateDragPosition()
+    if not dragCursor or not dragCursor:IsShown() then return end
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    dragCursor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+    dragCursor:ClearAllPoints()
+    dragCursor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + 12, y / scale + 4)
+end
+
+local function FindDropTarget()
+    for _, line in ipairs(allMemberLines) do
+        if line:IsVisible() and line:IsMouseOver() then
+            return line
+        end
+    end
+    return nil
+end
+
+local function GetMemberFromSlot(groupIdx, slot, slotIdx)
+    local group = KS.groups[groupIdx]
+    if not group then return nil end
+    if slot == "tank" then return group.tank
+    elseif slot == "healer" then return group.healer
+    elseif slot == "dps" then return group.dps[slotIdx]
+    end
+end
+
+local function SetMemberInSlot(groupIdx, slot, slotIdx, member)
+    local group = KS.groups[groupIdx]
+    if not group then return end
+    if slot == "tank" then group.tank = member
+    elseif slot == "healer" then group.healer = member
+    elseif slot == "dps" then group.dps[slotIdx] = member
+    end
+end
+
+local function StopDrag(line)
+    -- Hide cursor
+    if dragCursor then dragCursor:Hide() end
+
+    -- Remove highlight from source
+    if line and line._highlightTex then
+        line._highlightTex:Hide()
+    end
+
+    if not dragSource then return end
+
+    local target = FindDropTarget()
+    if target and target._member and target ~= line then
+        local src = dragSource
+        local dst = {
+            groupIdx = target._groupIdx,
+            slot = target._slot,
+            slotIdx = target._slotIdx,
+            member = target._member,
+        }
+
+        -- Swap the two members in the data model
+        SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
+        SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
+
+        -- Rebuild the view
+        KS.UpdateGroupView()
+    end
+
+    dragSource = nil
+end
+
+---------------------------------------------------------------------------
+-- Member line creation (with drag support)
+---------------------------------------------------------------------------
+local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, slotIdx)
     local line = CreateFrame("Frame", nil, parent)
     line:SetPoint("TOPLEFT", 8, yOffset)
     line:SetPoint("TOPRIGHT", -8, yOffset)
     line:SetHeight(MEMBER_HEIGHT)
+    line:EnableMouse(member ~= nil)
 
     -- Role icon
     local roleAtlas = KS.ROLE_ICONS[label]
@@ -59,13 +181,96 @@ local function CreateMemberLine(parent, yOffset, label, member)
     nameText:SetPoint("LEFT", 18, 0)
     nameText:SetText(GetClassColoredName(member) .. " " .. GetScoreString(member))
 
+    if member then
+        -- Store metadata for drag and drop
+        line._member = member
+        line._groupIdx = groupIdx
+        line._slot = slot       -- "tank", "healer", or "dps"
+        line._slotIdx = slotIdx -- index in dps array (nil for tank/healer)
+
+        -- Click to open character detail (non-drag click)
+        line:RegisterForClicks("RightButtonUp")
+        line:SetScript("OnClick", function(self, button)
+            if button == "RightButton" and self._member then
+                KS.ShowCharacterDetail(self._member, "groups")
+            end
+        end)
+
+        -- Register for drag
+        line:RegisterForDrag("LeftButton")
+        line:SetScript("OnDragStart", function(self) StartDrag(self) end)
+        line:SetScript("OnDragStop", function(self) StopDrag(self) end)
+
+        -- Update cursor position while dragging
+        line:SetScript("OnUpdate", function(self)
+            -- Drag cursor follow
+            UpdateDragPosition()
+
+            -- Shift-hover tooltip (only when not dragging)
+            if not dragSource and self:IsMouseOver() then
+                if IsShiftKeyDown() and not self._shiftShown then
+                    KS.ShowMemberTooltip(self, self._member)
+                    self._shiftShown = true
+                elseif not IsShiftKeyDown() and self._shiftShown then
+                    -- Shift released: switch back to hint tooltip
+                    self._shiftShown = false
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:AddLine("|cffccccccLeft-click drag|r to move", 0.8, 0.8, 0.8)
+                    GameTooltip:AddLine("|cffccccccRight-click|r to inspect", 0.8, 0.8, 0.8)
+                    GameTooltip:AddLine("|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5)
+                    GameTooltip:Show()
+                end
+            end
+
+            -- Highlight drop target
+            if dragSource and self ~= dragSource then
+                if self:IsMouseOver() and self._member then
+                    if not self._highlightTex then
+                        self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
+                        self._highlightTex:SetAllPoints()
+                        self._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
+                    end
+                    self._highlightTex:Show()
+                elseif self._highlightTex then
+                    self._highlightTex:Hide()
+                end
+            end
+        end)
+
+        line:SetScript("OnEnter", function(self)
+            if not dragSource then
+                if IsShiftKeyDown() then
+                    KS.ShowMemberTooltip(self, self._member)
+                else
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:AddLine("|cffccccccLeft-click drag|r to move", 0.8, 0.8, 0.8)
+                    GameTooltip:AddLine("|cffccccccRight-click|r to inspect", 0.8, 0.8, 0.8)
+                    GameTooltip:AddLine("|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5)
+                    GameTooltip:Show()
+                end
+            end
+        end)
+        line:SetScript("OnLeave", function(self)
+            GameTooltip:Hide()
+            self._shiftShown = false
+            if self._highlightTex then self._highlightTex:Hide() end
+        end)
+
+        -- Track this line for hit detection
+        table.insert(allMemberLines, line)
+    end
+
     return line
 end
 
 local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
+    -- Dynamic height: header(24) + tank + healer + max(#dps, 3) slots + padding(8)
+    local numDpsSlots = math.max(#group.dps, 3)
+    local cardHeight = 24 + (2 + numDpsSlots) * MEMBER_HEIGHT + 8
+
     -- Squared card with flat border
     local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    card:SetSize(CARD_WIDTH, CARD_HEIGHT)
+    card:SetSize(CARD_WIDTH, cardHeight)
     card:SetPoint("TOPLEFT", xOffset, yOffset)
 
     card:SetBackdrop(KS.BACKDROP_PANEL)
@@ -90,14 +295,14 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     utilText:SetPoint("TOPRIGHT", -8, -20)
     utilText:SetText(GetGroupUtilityString(group))
 
-    -- Members: 1 tank, 1 healer, 3 DPS
+    -- Members: 1 tank, 1 healer, N DPS
     local y = -24
-    CreateMemberLine(card, y, "TANK", group.tank)
+    CreateMemberLine(card, y, "TANK", group.tank, groupIdx, "tank", nil)
     y = y - MEMBER_HEIGHT
-    CreateMemberLine(card, y, "HEALER", group.healer)
+    CreateMemberLine(card, y, "HEALER", group.healer, groupIdx, "healer", nil)
     y = y - MEMBER_HEIGHT
-    for _, dps in ipairs(group.dps) do
-        CreateMemberLine(card, y, "DAMAGER", dps)
+    for dIdx, dps in ipairs(group.dps) do
+        CreateMemberLine(card, y, "DAMAGER", dps, groupIdx, "dps", dIdx)
         y = y - MEMBER_HEIGHT
     end
     -- Fill empty DPS slots if group is incomplete
@@ -150,6 +355,7 @@ function KS.UpdateGroupView()
         card:SetParent(nil)
     end
     wipe(groupCards)
+    wipe(allMemberLines)
     if unassignedCard then
         unassignedCard:Hide()
         unassignedCard:SetParent(nil)
@@ -178,31 +384,41 @@ function KS.UpdateGroupView()
 
     local xStart = 0
     local yStart = -CARD_PADDING
-    local row, col = 0, 0
+    local col = 0
+    local yOffset = yStart
+    local rowMaxHeight = 0
 
     for i, group in ipairs(KS.groups) do
         local x = xStart + col * (CARD_WIDTH + CARD_PADDING)
-        local y = yStart - row * (CARD_HEIGHT + CARD_PADDING)
 
-        local card = CreateGroupCard(scrollChild, i, group, x, y)
+        local card = CreateGroupCard(scrollChild, i, group, x, yOffset)
         table.insert(groupCards, card)
+
+        local cardHeight = card:GetHeight()
+        if cardHeight > rowMaxHeight then
+            rowMaxHeight = cardHeight
+        end
 
         col = col + 1
         if col >= cardsPerRow then
             col = 0
-            row = row + 1
+            yOffset = yOffset - rowMaxHeight - CARD_PADDING
+            rowMaxHeight = 0
         end
     end
 
-    -- Unassigned section below cards
-    local lastRow = math.ceil(#KS.groups / cardsPerRow)
-    local unassignedY = yStart - lastRow * (CARD_HEIGHT + CARD_PADDING) - CARD_PADDING
-
-    local unHeight = 0
-    if #KS.unassigned > 0 then
-        unassignedCard, unHeight = CreateUnassignedSection(scrollChild, unassignedY)
+    -- If the last row wasn't full, still account for its height
+    if col > 0 then
+        yOffset = yOffset - rowMaxHeight - CARD_PADDING
     end
 
-    local totalHeight = math.abs(unassignedY) + unHeight + CARD_PADDING
+    -- Unassigned section below cards
+    local unHeight = 0
+    if #KS.unassigned > 0 then
+        unassignedCard, unHeight = CreateUnassignedSection(scrollChild, yOffset - CARD_PADDING)
+        yOffset = yOffset - CARD_PADDING - unHeight
+    end
+
+    local totalHeight = math.abs(yOffset) + CARD_PADDING
     scrollChild:SetHeight(totalHeight)
 end

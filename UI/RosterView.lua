@@ -7,10 +7,13 @@ local TOOLBAR_HEIGHT = 30
 local sortField = "score"
 local sortAsc = false
 local filterIdx = 1
+local roleFilter = "ALL"
+local utilityFilter = "ALL"
+local timedFilter = 0
 
 local scrollFrame, scrollChild
 local rows = {}
-local headerArrows = {} -- arrow FontStrings per column index
+local headerArrows = {} -- arrow textures per column index
 local headerTexts = {}  -- label FontStrings per column index
 
 local COLUMNS = {
@@ -18,7 +21,7 @@ local COLUMNS = {
     { key = "role",        label = "Role",    width = 44,  align = "CENTER", sortable = false },
     { key = "score",       label = "Score",   width = 60,  align = "RIGHT",  sortable = true },
     { key = "ilvl",        label = "iLvl",    width = 44,  align = "RIGHT",  sortable = true },
-    { key = "avgKeyLevel", label = "Avg Key", width = 56,  align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel", label = "Avg Key Lvl", width = 70,  align = "RIGHT",  sortable = true },
     { key = "numTimed",    label = "Timed",   width = 46,  align = "RIGHT",  sortable = true },
     { key = "numUntimed",  label = "Untimed", width = 56,  align = "RIGHT",  sortable = true },
     { key = "numRuns",     label = "Total",   width = 44,  align = "RIGHT",  sortable = true },
@@ -45,9 +48,24 @@ local function CompareMembers(a, b)
 end
 
 local function PassesFilter(member)
-    if filterIdx == 1 then return true end
-    local thresh = KS.SCORE_THRESHOLDS[filterIdx]
-    return member.score >= thresh.min and member.score <= thresh.max
+    -- Score filter
+    if filterIdx > 1 then
+        local thresh = KS.SCORE_THRESHOLDS[filterIdx]
+        if member.score < thresh.min or member.score > thresh.max then return false end
+    end
+
+    -- Role filter
+    if roleFilter ~= "ALL" and member.role ~= roleFilter then return false end
+
+    -- Utility filter
+    if utilityFilter == "BREZ" and not member.hasBrez then return false end
+    if utilityFilter == "LUST" and not member.hasLust then return false end
+    if utilityFilter == "SHROUD" and not member.hasShroud then return false end
+
+    -- Timed runs filter
+    if timedFilter > 0 and (member.numTimed or 0) < timedFilter then return false end
+
+    return true
 end
 
 local function GetIlvlColor(ilvl)
@@ -101,7 +119,7 @@ local function GetDungeonName(mapID)
 end
 
 -- Build the shift-tooltip for a member's per-dungeon breakdown
-local function ShowMemberTooltip(row, member)
+function KS.ShowMemberTooltip(row, member)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     local classColor = KS.CLASS_COLORS[member.classFile]
     if classColor then
@@ -158,6 +176,16 @@ local function ShowMemberTooltip(row, member)
         end
     end
 
+    -- Utilities
+    local utils = {}
+    if member.hasBrez then table.insert(utils, "Battle Rez") end
+    if member.hasLust then table.insert(utils, "Bloodlust") end
+    if member.hasShroud then table.insert(utils, "Shroud") end
+    if #utils > 0 then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Utilities: " .. table.concat(utils, ", "), 0.5, 0.8, 0.5)
+    end
+
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Hold Shift to keep open", 0.4, 0.4, 0.4)
     GameTooltip:Show()
@@ -175,15 +203,16 @@ end
 local function UpdateSortIndicators()
     for ci, col in ipairs(COLUMNS) do
         if col.sortable and headerArrows[ci] then
+            local arrow = headerArrows[ci]
             if sortField == col.key then
-                -- Active sort: bright arrow
-                headerArrows[ci]:SetText(sortAsc and "^" or "v")
-                headerArrows[ci]:SetTextColor(0, 0.8, 1)
+                -- Active sort: bright arrow, rotated for direction
+                arrow:SetRotation(sortAsc and math.pi or 0)
+                arrow:SetVertexColor(0, 0.8, 1, 1)
                 headerTexts[ci]:SetTextColor(1, 1, 1)
             else
-                -- Inactive: dim arrow always showing "v"
-                headerArrows[ci]:SetText("v")
-                headerArrows[ci]:SetTextColor(0.35, 0.35, 0.35)
+                -- Inactive: dim arrow pointing down
+                arrow:SetRotation(0)
+                arrow:SetVertexColor(0.35, 0.35, 0.35, 1)
                 headerTexts[ci]:SetTextColor(0.7, 0.7, 0.7)
             end
         end
@@ -191,7 +220,7 @@ local function UpdateSortIndicators()
 end
 
 local function CreateRow(parent, index)
-    local row = CreateFrame("Frame", nil, parent)
+    local row = CreateFrame("Button", nil, parent)
     row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
     row:SetPoint("TOPRIGHT", 0, -(index - 1) * ROW_HEIGHT)
@@ -212,11 +241,17 @@ local function CreateRow(parent, index)
     hoverTex:Hide()
     row:EnableMouse(true)
     row._shiftShown = false
+    row:RegisterForClicks("LeftButtonUp")
     row:SetScript("OnEnter", function(self)
         hoverTex:Show()
         if IsShiftKeyDown() and self._member then
-            ShowMemberTooltip(self, self._member)
+            KS.ShowMemberTooltip(self, self._member)
             self._shiftShown = true
+        elseif self._member then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("|cffccccccClick|r to inspect", 0.8, 0.8, 0.8)
+            GameTooltip:AddLine("|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5)
+            GameTooltip:Show()
         end
     end)
     row:SetScript("OnLeave", function(self)
@@ -224,11 +259,16 @@ local function CreateRow(parent, index)
         GameTooltip:Hide()
         self._shiftShown = false
     end)
+    row:SetScript("OnClick", function(self)
+        if self._member then
+            KS.ShowCharacterDetail(self._member, "roster")
+        end
+    end)
     row:SetScript("OnUpdate", function(self)
         if not self:IsMouseOver() then return end
         local shiftDown = IsShiftKeyDown()
         if shiftDown and not self._shiftShown and self._member then
-            ShowMemberTooltip(self, self._member)
+            KS.ShowMemberTooltip(self, self._member)
             self._shiftShown = true
         elseif not shiftDown and self._shiftShown then
             GameTooltip:Hide()
@@ -264,29 +304,92 @@ end
 
 function KS.CreateRosterView(parent)
     ---------------------------------------------------------------------------
-    -- Toolbar: filter dropdown + member count
+    -- Toolbar: filter dropdowns + member count
     ---------------------------------------------------------------------------
     local toolbar = CreateFrame("Frame", nil, parent)
     toolbar:SetPoint("TOPLEFT", 0, 0)
     toolbar:SetPoint("TOPRIGHT", 0, 0)
     toolbar:SetHeight(TOOLBAR_HEIGHT)
 
-    local filterLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    filterLabel:SetPoint("LEFT", 4, 0)
-    filterLabel:SetText("Filter:")
+    -- Score filter
+    local scoreLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    scoreLabel:SetPoint("LEFT", 4, 0)
+    scoreLabel:SetText("Score:")
 
     local ddItems = {}
     for i, thresh in ipairs(KS.SCORE_THRESHOLDS) do
         table.insert(ddItems, { text = thresh.label, value = i })
     end
 
-    local filterDD = KS.CreateDropdown(toolbar, 120, 22)
-    filterDD:SetPoint("LEFT", filterLabel, "RIGHT", 6, 0)
+    local filterDD = KS.CreateDropdown(toolbar, 100, 22)
+    filterDD:SetPoint("LEFT", scoreLabel, "RIGHT", 4, 0)
     filterDD:SetItems(ddItems)
     filterDD:SetSelected(KeySorterDB.filterIdx or 1)
     filterDD:SetOnSelect(function(value)
         filterIdx = value
         KeySorterDB.filterIdx = value
+        KS.UpdateRosterView()
+    end)
+
+    -- Role filter
+    local roleLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    roleLabel:SetPoint("LEFT", filterDD, "RIGHT", 8, 0)
+    roleLabel:SetText("Role:")
+
+    local roleDD = KS.CreateDropdown(toolbar, 80, 22)
+    roleDD:SetPoint("LEFT", roleLabel, "RIGHT", 4, 0)
+    roleDD:SetItems({
+        { text = "All", value = "ALL" },
+        { text = "Tank", value = "TANK" },
+        { text = "Healer", value = "HEALER" },
+        { text = "DPS", value = "DAMAGER" },
+    })
+    roleDD:SetSelected("ALL")
+    roleDD:SetOnSelect(function(value)
+        roleFilter = value
+        KS.UpdateRosterView()
+    end)
+
+    -- Utility filter
+    local utilLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    utilLabel:SetPoint("LEFT", roleDD, "RIGHT", 8, 0)
+    utilLabel:SetText("Utility:")
+
+    local utilDD = KS.CreateDropdown(toolbar, 80, 22)
+    utilDD:SetPoint("LEFT", utilLabel, "RIGHT", 4, 0)
+    utilDD:SetItems({
+        { text = "All", value = "ALL" },
+        { text = "BRez", value = "BREZ" },
+        { text = "Lust", value = "LUST" },
+        { text = "Shroud", value = "SHROUD" },
+    })
+    utilDD:SetSelected("ALL")
+    utilDD:SetOnSelect(function(value)
+        utilityFilter = value
+        KS.UpdateRosterView()
+    end)
+
+    -- Timed runs filter
+    local timedLabel = toolbar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    timedLabel:SetPoint("LEFT", utilDD, "RIGHT", 8, 0)
+    timedLabel:SetText("Timed:")
+
+    local timedDD = KS.CreateDropdown(toolbar, 62, 22)
+    timedDD:SetPoint("LEFT", timedLabel, "RIGHT", 4, 0)
+    timedDD:SetItems({
+        { text = "All", value = 0 },
+        { text = "5+", value = 5 },
+        { text = "10+", value = 10 },
+        { text = "15+", value = 15 },
+        { text = "20+", value = 20 },
+        { text = "25+", value = 25 },
+        { text = "30+", value = 30 },
+        { text = "35+", value = 35 },
+        { text = "40+", value = 40 },
+    })
+    timedDD:SetSelected(0)
+    timedDD:SetOnSelect(function(value)
+        timedFilter = value
         KS.UpdateRosterView()
     end)
 
@@ -322,17 +425,19 @@ function KS.CreateRosterView(parent)
             text:SetTextColor(0.7, 0.7, 0.7)
             headerTexts[ci] = text
 
-            -- Sort arrow (right side of header cell)
-            local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            arrow:SetPoint("RIGHT", -2, 0)
-            arrow:SetText("v")
-            arrow:SetTextColor(0.35, 0.35, 0.35)
+            -- Sort arrow texture (after label with padding)
+            local arrow = btn:CreateTexture(nil, "OVERLAY")
+            arrow:SetSize(10, 10)
+            arrow:SetPoint("LEFT", text, "RIGHT", 4, 0)
+            arrow:SetTexture("Interface\\Buttons\\Arrow-Down-Up")
+            arrow:SetTexCoord(0, 0.5625, 0, 1)
+            arrow:SetVertexColor(0.35, 0.35, 0.35, 1)
             headerArrows[ci] = arrow
 
             -- Hover: brighten
             btn:SetScript("OnEnter", function()
                 text:SetTextColor(1, 1, 1)
-                arrow:SetTextColor(0.7, 0.7, 0.7)
+                arrow:SetVertexColor(0.7, 0.7, 0.7, 1)
             end)
             btn:SetScript("OnLeave", function()
                 UpdateSortIndicators()

@@ -33,26 +33,78 @@ function KS.ScanRoster()
         KS.UpdateRosterView()
     end
 
-    print(format("|cff00ccffKeySorter|r: Scanned %d member(s).", #KS.roster))
+    local source = (RaiderIO and RaiderIO.GetProfile) and "Raider.IO" or "Blizzard API"
+    print(format("|cff00ccffKeySorter|r: Scanned %d member(s) via %s.", #KS.roster, source))
 end
 
-function KS.ScanUnit(unit, name, raidIndex)
-    local _, classFile = UnitClass(unit)
-    local role = UnitGroupRolesAssigned(unit)
-    if role == "NONE" then role = "DAMAGER" end
+-- Try Raider.IO first, returns true + populated entry fields if successful
+local function ScanFromRaiderIO(unit, entry)
+    if not RaiderIO or not RaiderIO.GetProfile then return false end
 
-    local score = 0
-    local runs = {}
+    local profile = RaiderIO.GetProfile(unit)
+    if not profile or not profile.success then return false end
+
+    local mkp = profile.mythicKeystoneProfile
+    if not mkp or not mkp.hasRenderableData then return false end
+
+    entry.score = mkp.currentScore or 0
+    entry.previousScore = mkp.previousScore or 0
+
+    -- Run counts at key level thresholds
+    entry.keystoneFivePlus = mkp.keystoneFivePlus or 0
+    entry.keystoneTenPlus = mkp.keystoneTenPlus or 0
+    entry.keystoneFifteenPlus = mkp.keystoneFifteenPlus or 0
+    entry.keystoneTwentyPlus = mkp.keystoneTwentyPlus or 0
+
+    -- Per-dungeon data from sortedDungeons
     local totalKeyLevel = 0
     local numTimed = 0
     local numUntimed = 0
 
+    if mkp.sortedDungeons then
+        for _, d in ipairs(mkp.sortedDungeons) do
+            if d.dungeon and d.level and d.level > 0 then
+                local mapID = d.dungeon.id or d.dungeon.challengeModeID
+                if mapID then
+                    entry.runs[mapID] = {
+                        level = d.level,
+                        timed = d.chests and d.chests > 0,
+                        chests = d.chests or 0,
+                        fractionalTime = d.fractionalTime,
+                    }
+                end
+                totalKeyLevel = totalKeyLevel + d.level
+                if d.chests and d.chests > 0 then
+                    numTimed = numTimed + 1
+                else
+                    numUntimed = numUntimed + 1
+                end
+            end
+        end
+    end
+
+    local numRuns = numTimed + numUntimed
+    entry.avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
+    entry.numRuns = numRuns
+    entry.numTimed = numTimed
+    entry.numUntimed = numUntimed
+    entry.dataSource = "raiderio"
+
+    return true
+end
+
+-- Fallback: native Blizzard API (best run per dungeon only)
+local function ScanFromBlizzard(unit, entry)
     local summary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary(unit)
     if summary then
-        score = summary.currentSeasonScore or 0
+        entry.score = summary.currentSeasonScore or 0
         if summary.runs then
+            local totalKeyLevel = 0
+            local numTimed = 0
+            local numUntimed = 0
+
             for _, run in ipairs(summary.runs) do
-                runs[run.challengeModeID] = {
+                entry.runs[run.challengeModeID] = {
                     level = run.bestRunLevel,
                     timed = run.finishedSuccess,
                     score = run.mapScore,
@@ -66,39 +118,59 @@ function KS.ScanUnit(unit, name, raidIndex)
                     end
                 end
             end
+
+            local numRuns = numTimed + numUntimed
+            entry.avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
+            entry.numRuns = numRuns
+            entry.numTimed = numTimed
+            entry.numUntimed = numUntimed
         end
     end
+    entry.dataSource = "blizzard"
+end
 
-    local numRuns = numTimed + numUntimed
-    local avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
-
-    -- Item level: GetAverageItemLevel works for "player", others need inspect
-    local ilvl = 0
-    if UnitIsUnit(unit, "player") then
-        local overall, equipped = GetAverageItemLevel()
-        ilvl = math.floor(equipped or overall or 0)
-    elseif C_PaperDollInfo and C_PaperDollInfo.GetInspectItemLevel then
-        local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(unit)
-        ilvl = inspectIlvl and math.floor(inspectIlvl) or 0
-    end
+function KS.ScanUnit(unit, name, raidIndex)
+    local _, classFile = UnitClass(unit)
+    local role = UnitGroupRolesAssigned(unit)
+    if role == "NONE" then role = "DAMAGER" end
 
     local entry = {
         name = name,
         unit = unit,
         classFile = classFile,
         role = role,
-        score = score,
-        runs = runs,
-        avgKeyLevel = avgKeyLevel,
-        numRuns = numRuns,
-        numTimed = numTimed,
-        numUntimed = numUntimed,
-        ilvl = ilvl,
+        score = 0,
+        previousScore = 0,
+        runs = {},
+        avgKeyLevel = 0,
+        numRuns = 0,
+        numTimed = 0,
+        numUntimed = 0,
+        keystoneFivePlus = 0,
+        keystoneTenPlus = 0,
+        keystoneFifteenPlus = 0,
+        keystoneTwentyPlus = 0,
+        ilvl = 0,
         raidIndex = raidIndex,
         hasBrez = KS.BREZ[classFile] or false,
         hasLust = KS.LUST[classFile] or false,
         hasShroud = KS.SHROUD[classFile] or false,
+        dataSource = "none",
     }
+
+    -- Try Raider.IO first, fall back to Blizzard API
+    if not ScanFromRaiderIO(unit, entry) then
+        ScanFromBlizzard(unit, entry)
+    end
+
+    -- Item level: GetAverageItemLevel works for "player", others need inspect
+    if UnitIsUnit(unit, "player") then
+        local overall, equipped = GetAverageItemLevel()
+        entry.ilvl = math.floor(equipped or overall or 0)
+    elseif C_PaperDollInfo and C_PaperDollInfo.GetInspectItemLevel then
+        local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(unit)
+        entry.ilvl = inspectIlvl and math.floor(inspectIlvl) or 0
+    end
 
     table.insert(KS.roster, entry)
 end

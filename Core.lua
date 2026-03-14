@@ -6,9 +6,82 @@ KS.unassigned = {}
 KS.previewMode = false
 KS.previewPlayerCount = 25
 
+---------------------------------------------------------------------------
+-- Inspect queue: background ilvl collection for raid members
+---------------------------------------------------------------------------
+local inspectQueue = {}
+local inspectBusy = false
+local INSPECT_INTERVAL = 1.5 -- seconds between inspects
+
+local function ProcessInspectQueue()
+    if inspectBusy or #inspectQueue == 0 then return end
+    if InCombatLockdown() then return end
+
+    local unit = tremove(inspectQueue, 1)
+    if unit and UnitExists(unit) and UnitIsConnected(unit) and CheckInteractDistance(unit, 1) then
+        inspectBusy = true
+        NotifyInspect(unit)
+    elseif #inspectQueue > 0 then
+        C_Timer.After(0.1, ProcessInspectQueue)
+    end
+end
+
+local function QueueInspect(unit)
+    if UnitIsUnit(unit, "player") then return end
+    -- Don't queue duplicates
+    for _, queued in ipairs(inspectQueue) do
+        if queued == unit then return end
+    end
+    table.insert(inspectQueue, unit)
+    ProcessInspectQueue()
+end
+
+local function QueueAllMembers()
+    if KS.previewMode then return end
+    local numMembers = GetNumGroupMembers()
+    if numMembers == 0 then return end
+
+    local prefix = IsInRaid() and "raid" or "party"
+    for i = 1, numMembers do
+        local unit = prefix .. i
+        if UnitExists(unit) and UnitIsConnected(unit) and not UnitIsUnit(unit, "player") then
+            QueueInspect(unit)
+        end
+    end
+end
+
+local function OnInspectReady(guid)
+    inspectBusy = false
+
+    -- Find the unit and update ilvl in roster
+    if C_PaperDollInfo and C_PaperDollInfo.GetInspectItemLevel then
+        for _, member in ipairs(KS.roster) do
+            if member.unit and UnitExists(member.unit) and UnitGUID(member.unit) == guid then
+                local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(member.unit)
+                if inspectIlvl and inspectIlvl > 0 then
+                    member.ilvl = math.floor(inspectIlvl)
+                    if KS.UpdateRosterView then KS.UpdateRosterView() end
+                end
+                break
+            end
+        end
+    end
+
+    ClearInspectPlayer()
+
+    -- Continue processing queue
+    if #inspectQueue > 0 then
+        C_Timer.After(INSPECT_INTERVAL, ProcessInspectQueue)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Main event frame
+---------------------------------------------------------------------------
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
+frame:RegisterEvent("INSPECT_READY")
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
@@ -28,6 +101,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KS.ScanRoster()
             KS.UpdatePermissionState()
         end
+        -- Queue inspects for ilvl when members join
+        QueueAllMembers()
+    elseif event == "INSPECT_READY" then
+        local guid = ...
+        OnInspectReady(guid)
     end
 end)
 
@@ -42,9 +120,8 @@ function KS.UpdatePermissionState()
     if not KS.mainFrame then return end
     local permitted = KS.IsPermitted()
     if KS.scanButton then KS.scanButton:SetEnabled(permitted) end
-    if KS.sortButton then KS.sortButton:SetEnabled(permitted) end
     if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(permitted) end
-    if KS.applyButton then KS.applyButton:SetEnabled(permitted) end
+
     if KS.announceButton then KS.announceButton:SetEnabled(permitted) end
     if KS.syncButton then KS.syncButton:SetEnabled(permitted) end
 end
@@ -214,16 +291,22 @@ function KS.GeneratePreviewData()
             classFile = classFile,
             role = role,
             score = score,
+            previousScore = math.random(0, score),
             runs = runs,
             avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0,
             numRuns = numRuns,
             numTimed = numTimed,
             numUntimed = numUntimed,
-            ilvl = math.random(220, 290),
+            keystoneFivePlus = math.random(0, 80),
+            keystoneTenPlus = math.random(0, 40),
+            keystoneFifteenPlus = math.random(0, 15),
+            keystoneTwentyPlus = math.random(0, 5),
+            ilvl = math.random(207, 289),
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,
             hasShroud = KS.SHROUD[classFile] or false,
+            dataSource = "raiderio",
         })
     end
 end
