@@ -277,9 +277,35 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     card:SetBackdropColor(0.12, 0.12, 0.12, 0.95)
     card:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
+    -- Lock toggle button
+    local lockBtn = CreateFrame("Button", nil, card)
+    lockBtn:SetSize(16, 16)
+    lockBtn:SetPoint("TOPLEFT", 6, -5)
+
+    local lockIcon = lockBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    lockIcon:SetPoint("CENTER", 0, 0)
+    lockIcon:SetText(group.locked and "|cff00cc00L|r" or "|cff666666U|r")
+
+    local function UpdateLockVisual()
+        if group.locked then
+            lockIcon:SetText("|cff00cc00L|r")
+            card:SetBackdropBorderColor(0.1, 0.5, 0.1, 1)
+        else
+            lockIcon:SetText("|cff666666U|r")
+            card:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+        end
+    end
+    UpdateLockVisual()
+
+    lockBtn:SetScript("OnClick", function()
+        group.locked = not group.locked
+        UpdateLockVisual()
+    end)
+    KS.AddTooltip(lockBtn, "Lock Group", "Locked groups are preserved when re-sorting.")
+
     -- Group header
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    header:SetPoint("TOPLEFT", 8, -6)
+    header:SetPoint("LEFT", lockBtn, "RIGHT", 2, 0)
     header:SetText(format("Group %d", groupIdx))
     header:SetTextColor(0, 0.8, 1)
 
@@ -349,16 +375,27 @@ end
 function KS.UpdateGroupView()
     if not scrollChild then return end
 
-    -- Clear existing cards
+    -- Clear existing cards — hide all children explicitly to prevent visual artifacts
+    local function CleanupFrame(frame)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            child:Hide()
+            child:ClearAllPoints()
+        end
+        for _, region in ipairs({ frame:GetRegions() }) do
+            region:Hide()
+        end
+        frame:Hide()
+        frame:ClearAllPoints()
+        frame:SetParent(nil)
+    end
+
     for _, card in ipairs(groupCards) do
-        card:Hide()
-        card:SetParent(nil)
+        CleanupFrame(card)
     end
     wipe(groupCards)
     wipe(allMemberLines)
     if unassignedCard then
-        unassignedCard:Hide()
-        unassignedCard:SetParent(nil)
+        CleanupFrame(unassignedCard)
         unassignedCard = nil
     end
     if noDataText then

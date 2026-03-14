@@ -1,6 +1,6 @@
 local addonName, KS = ...
 
-local BUTTON_SIZE = 33
+local BUTTON_SIZE = 31
 local MINIMAP_RADIUS = 80
 
 function KS.CreateMinimapButton()
@@ -15,25 +15,30 @@ function KS.CreateMinimapButton()
 
     -- Icon background (circular area behind the label)
     local icon = btn:CreateTexture(nil, "BACKGROUND")
-    icon:SetSize(21, 21)
-    icon:SetPoint("CENTER", 0, 0)
+    icon:SetSize(20, 20)
+    icon:SetPoint("TOPLEFT", 6, -6)
     icon:SetColorTexture(0.08, 0.08, 0.08, 1)
 
     -- "KS" text label as the icon
     local label = btn:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    label:SetPoint("CENTER", 0, 0)
+    label:SetPoint("TOPLEFT", 6, -6)
+    label:SetPoint("BOTTOMRIGHT", -5, 5)
+    label:SetJustifyH("CENTER")
+    label:SetJustifyV("MIDDLE")
     label:SetText("|cff00ccffKS|r")
 
-    -- Standard circular minimap border overlay (texture has built-in offset)
+    -- Standard circular minimap border overlay
+    -- The border texture visual circle is offset within the image;
+    -- anchoring at TOPLEFT with size 53x53 aligns it with the button
     local overlay = btn:CreateTexture(nil, "OVERLAY")
-    overlay:SetSize(54, 54)
-    overlay:SetPoint("TOPLEFT", -2, 2)
+    overlay:SetSize(53, 53)
+    overlay:SetPoint("TOPLEFT", 0, 0)
     overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 
     -- Highlight texture (standard minimap button glow on hover)
     local highlight = btn:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetSize(24, 24)
-    highlight:SetPoint("CENTER", 0, 0)
+    highlight:SetPoint("TOPLEFT", 4, -4)
     highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     highlight:SetBlendMode("ADD")
 

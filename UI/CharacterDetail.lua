@@ -389,6 +389,7 @@ function KS.ShowCharacterDetail(member, fromTab)
     if not member then return end
     if not KS.mainFrame then return end
 
+    GameTooltip:Hide()
     EnsureDetailFrame()
 
     previousTab = fromTab or "roster"

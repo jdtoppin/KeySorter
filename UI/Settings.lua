@@ -109,7 +109,7 @@ function KS.CreateSettingsFrame()
     y = y - 30
 
     -- Player count slider
-    local countSlider = KS.CreateSlider(settingsFrame, "Player Count", 5, 40, 5, 200)
+    local countSlider = KS.CreateSlider(settingsFrame, "Player Count", 1, 40, 1, 200)
     countSlider:SetPoint("TOPLEFT", 16, y)
     countSlider:SetValue(KS.previewPlayerCount or 25)
     countSlider:SetOnChange(function(val)

@@ -13,19 +13,18 @@ local timedFilter = 0
 
 local scrollFrame, scrollChild
 local rows = {}
-local headerArrows = {} -- arrow textures per column index
 local headerTexts = {}  -- label FontStrings per column index
 
 local COLUMNS = {
-    { key = "name",        label = "Name",    width = 130, align = "LEFT",   sortable = true },
-    { key = "role",        label = "Role",    width = 44,  align = "CENTER", sortable = false },
-    { key = "score",       label = "Score",   width = 60,  align = "RIGHT",  sortable = true },
-    { key = "ilvl",        label = "iLvl",    width = 44,  align = "RIGHT",  sortable = true },
-    { key = "avgKeyLevel", label = "Avg Key Lvl", width = 70,  align = "RIGHT",  sortable = true },
-    { key = "numTimed",    label = "Timed",   width = 46,  align = "RIGHT",  sortable = true },
-    { key = "numUntimed",  label = "Untimed", width = 56,  align = "RIGHT",  sortable = true },
-    { key = "numRuns",     label = "Total",   width = 44,  align = "RIGHT",  sortable = true },
-    { key = "utilities",   label = "Utility", width = 70,  align = "CENTER", sortable = false },
+    { key = "name",        label = "Name",        width = 120, align = "LEFT",   sortable = true },
+    { key = "role",        label = "Role",        width = 40,  align = "CENTER", sortable = false },
+    { key = "score",       label = "Score",       width = 62,  align = "RIGHT",  sortable = true },
+    { key = "ilvl",        label = "iLvl",        width = 52,  align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel", label = "Avg Key",     width = 76,  align = "RIGHT",  sortable = true },
+    { key = "numTimed",    label = "Timed",       width = 60,  align = "RIGHT",  sortable = true },
+    { key = "numUntimed",  label = "Untimed",     width = 68,  align = "RIGHT",  sortable = true },
+    { key = "numRuns",     label = "Total",       width = 56,  align = "RIGHT",  sortable = true },
+    { key = "utilities",   label = "Utility",     width = 70,  align = "CENTER", sortable = false },
 }
 
 local function GetColumnX(idx)
@@ -199,20 +198,16 @@ local function GetUtilityString(member)
     return table.concat(parts, " ")
 end
 
--- Update sort arrows: highlight the active sort column's arrow
+-- Update sort indicators: append arrow character to active column label
 local function UpdateSortIndicators()
     for ci, col in ipairs(COLUMNS) do
-        if col.sortable and headerArrows[ci] then
-            local arrow = headerArrows[ci]
+        if col.sortable and headerTexts[ci] then
             if sortField == col.key then
-                -- Active sort: bright arrow, rotated for direction
-                arrow:SetRotation(sortAsc and math.pi or 0)
-                arrow:SetVertexColor(0, 0.8, 1, 1)
+                local arrow = sortAsc and " ^" or " v"
+                headerTexts[ci]:SetText(col.label .. "|cff00ccff" .. arrow .. "|r")
                 headerTexts[ci]:SetTextColor(1, 1, 1)
             else
-                -- Inactive: dim arrow pointing down
-                arrow:SetRotation(0)
-                arrow:SetVertexColor(0.35, 0.35, 0.35, 1)
+                headerTexts[ci]:SetText(col.label)
                 headerTexts[ci]:SetTextColor(0.7, 0.7, 0.7)
             end
         end
@@ -418,26 +413,16 @@ function KS.CreateRosterView(parent)
             btn:SetPoint("LEFT", x, 0)
             btn:SetSize(col.width, HEADER_HEIGHT)
 
-            -- Column label
+            -- Column label (sort indicator appended via UpdateSortIndicators)
             local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
             text:SetPoint("LEFT", 2, 0)
             text:SetText(col.label)
             text:SetTextColor(0.7, 0.7, 0.7)
             headerTexts[ci] = text
 
-            -- Sort arrow texture (after label with padding)
-            local arrow = btn:CreateTexture(nil, "OVERLAY")
-            arrow:SetSize(10, 10)
-            arrow:SetPoint("LEFT", text, "RIGHT", 4, 0)
-            arrow:SetTexture("Interface\\Buttons\\Arrow-Down-Up")
-            arrow:SetTexCoord(0, 0.5625, 0, 1)
-            arrow:SetVertexColor(0.35, 0.35, 0.35, 1)
-            headerArrows[ci] = arrow
-
             -- Hover: brighten
             btn:SetScript("OnEnter", function()
                 text:SetTextColor(1, 1, 1)
-                arrow:SetVertexColor(0.7, 0.7, 0.7, 1)
             end)
             btn:SetScript("OnLeave", function()
                 UpdateSortIndicators()

@@ -37,7 +37,7 @@ function KS.CreateAboutView(parent)
 
     local version = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     version:SetPoint("LEFT", title, "RIGHT", 8, 0)
-    version:SetText("v1.0.0")
+    version:SetText("v" .. (C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"))
     version:SetTextColor(0.6, 0.6, 0.6)
     y = y - 24
     AddSpacer()
@@ -48,8 +48,7 @@ function KS.CreateAboutView(parent)
     ---------------------------------------------------------------------------
     AddHeading("Tabs")
     AddText("|cffffffffRoster|r — View all raid members with their M+ score, average key level, timed/untimed runs, item level, and class utilities. Click column headers to sort. Use the filter dropdowns to narrow by score range, role, utility, or minimum timed runs.")
-    AddText("|cffffffffGroups|r — View and manage auto-generated 5-man groups. Sort forms the groups, Apply moves players into raid subgroups, Announce posts assignments to raid chat, and Sync broadcasts to assistants.")
-    AddText("|cffffffffPreview|r — Generate fake raid data to test the UI without a group. Adjust player count with the slider.")
+    AddText("|cffffffffGroups|r — View and manage auto-generated 5-man groups. Sort forms the groups and moves players into raid subgroups, Announce posts assignments to raid chat, and Sync broadcasts to assistants. Drag and drop members between groups to manually adjust.")
     AddSpacer()
 
     ---------------------------------------------------------------------------
@@ -76,7 +75,7 @@ function KS.CreateAboutView(parent)
     AddText("|cff00ff00/ks apply|r  Move players to raid subgroups")
     AddText("|cff00ff00/ks announce|r  Post groups to raid chat")
     AddText("|cff00ff00/ks sync|r  Sync groups to assistants")
-    AddText("|cff00ff00/ks preview|r  Toggle preview mode")
+    AddText("|cff00ff00/ks preview|r  Open settings (preview mode)")
     AddText("|cff00ff00/ks about|r  Show this page")
     AddText("|cff00ff00/ks help|r  Print command list to chat")
     AddSpacer()

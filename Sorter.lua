@@ -1,7 +1,6 @@
 local addonName, KS = ...
 
 function KS.SortGroups()
-    wipe(KS.groups)
     wipe(KS.unassigned)
 
     if #KS.roster == 0 then
@@ -9,15 +8,31 @@ function KS.SortGroups()
         return
     end
 
-    -- Step 1: Separate by role
+    -- Collect locked groups and their members (by name for matching)
+    local lockedGroups = {}
+    local lockedNames = {}
+    for i, group in ipairs(KS.groups) do
+        if group.locked then
+            table.insert(lockedGroups, { index = i, group = group })
+            if group.tank then lockedNames[group.tank.name] = true end
+            if group.healer then lockedNames[group.healer.name] = true end
+            for _, d in ipairs(group.dps) do
+                lockedNames[d.name] = true
+            end
+        end
+    end
+
+    -- Step 1: Separate unlocked roster members by role
     local tanks, healers, dps = {}, {}, {}
     for _, member in ipairs(KS.roster) do
-        if member.role == "TANK" then
-            table.insert(tanks, member)
-        elseif member.role == "HEALER" then
-            table.insert(healers, member)
-        else
-            table.insert(dps, member)
+        if not lockedNames[member.name] then
+            if member.role == "TANK" then
+                table.insert(tanks, member)
+            elseif member.role == "HEALER" then
+                table.insert(healers, member)
+            else
+                table.insert(dps, member)
+            end
         end
     end
 
@@ -30,9 +45,11 @@ function KS.SortGroups()
     table.sort(healers, byScore)
     table.sort(dps, byScore)
 
-    -- Step 3: Determine number of groups (limited by scarcest role)
-    local numGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
-    if numGroups == 0 then
+    -- Step 3: Determine number of new groups from unlocked players
+    local numNewGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
+
+    if numNewGroups == 0 and #lockedGroups == 0 then
+        wipe(KS.groups)
         for _, t in ipairs(tanks) do table.insert(KS.unassigned, t) end
         for _, h in ipairs(healers) do table.insert(KS.unassigned, h) end
         for _, d in ipairs(dps) do table.insert(KS.unassigned, d) end
@@ -41,59 +58,79 @@ function KS.SortGroups()
         return
     end
 
-    -- Initialize groups
-    for i = 1, numGroups do
-        KS.groups[i] = { tank = nil, healer = nil, dps = {} }
+    -- Build new groups from unlocked players
+    local newGroups = {}
+    for i = 1, numNewGroups do
+        newGroups[i] = { tank = nil, healer = nil, dps = {} }
     end
 
     -- Step 4: Skill-matched grouping
-    -- Assign the best tank + healer + top 3 DPS together (group 1 = highest skill),
-    -- next best together (group 2), etc. Players of similar score stay together.
-    for i = 1, numGroups do
-        KS.groups[i].tank = tanks[i]
-        KS.groups[i].healer = healers[i]
+    for i = 1, numNewGroups do
+        newGroups[i].tank = tanks[i]
+        newGroups[i].healer = healers[i]
     end
 
     -- DPS: fill 3 per group first (core slots)
-    local dpsNeeded = numGroups * 3
+    local dpsNeeded = numNewGroups * 3
     local dpsToAssign = math.min(#dps, dpsNeeded)
     for i = 1, dpsToAssign do
         local groupIdx = math.ceil(i / 3)
-        table.insert(KS.groups[groupIdx].dps, dps[i])
+        table.insert(newGroups[groupIdx].dps, dps[i])
     end
 
-    -- Step 4b: Distribute extras across groups (non-perfect multiples of 5)
-    -- Extra tanks beyond numGroups become additional members in lower-scored groups
-    -- Extra healers become additional members in lower-scored groups
-    -- Extra DPS beyond 3-per-group are spread round-robin starting from the lowest group
+    -- Step 4b: Distribute extras across new groups
     local extras = {}
-    for i = numGroups + 1, #tanks do
+    for i = numNewGroups + 1, #tanks do
         table.insert(extras, tanks[i])
     end
-    for i = numGroups + 1, #healers do
+    for i = numNewGroups + 1, #healers do
         table.insert(extras, healers[i])
     end
     for i = dpsToAssign + 1, #dps do
         table.insert(extras, dps[i])
     end
 
-    -- Sort extras by score descending so highest-rated extras go to the best groups
     table.sort(extras, function(a, b)
         if a.score ~= b.score then return a.score > b.score end
         return (a.ilvl or 0) > (b.ilvl or 0)
     end)
 
-    -- Distribute round-robin starting from group 1
-    for i, extra in ipairs(extras) do
-        local groupIdx = ((i - 1) % numGroups) + 1
-        table.insert(KS.groups[groupIdx].dps, extra)
+    if numNewGroups > 0 then
+        for i, extra in ipairs(extras) do
+            local groupIdx = ((i - 1) % numNewGroups) + 1
+            table.insert(newGroups[groupIdx].dps, extra)
+        end
+    else
+        -- No new groups possible, all extras are unassigned
+        for _, extra in ipairs(extras) do
+            table.insert(KS.unassigned, extra)
+        end
     end
 
-    -- Step 5: Utility balancing pass (swap DPS between groups to cover BR/BL)
-    -- Only swap within similar score tiers to preserve skill grouping
+    -- Merge: locked groups first (preserve their positions), then new groups
+    wipe(KS.groups)
+    -- Place locked groups back at their original indices
+    for _, lg in ipairs(lockedGroups) do
+        KS.groups[lg.index] = lg.group
+    end
+    -- Fill remaining slots with new groups
+    local newIdx = 1
+    for i = 1, #lockedGroups + numNewGroups do
+        if not KS.groups[i] then
+            if newIdx <= numNewGroups then
+                KS.groups[i] = newGroups[newIdx]
+                newIdx = newIdx + 1
+            end
+        end
+    end
+
+    -- Step 5: Utility balancing pass (only on unlocked groups)
     KS.BalanceUtilities()
 
-    print(format("|cff00ccffKeySorter|r: Formed %d group(s), %d unassigned.", numGroups, #KS.unassigned))
+    local numLocked = #lockedGroups
+    local totalGroups = #KS.groups
+    local lockMsg = numLocked > 0 and format(" (%d locked)", numLocked) or ""
+    print(format("|cff00ccffKeySorter|r: Formed %d group(s)%s, %d unassigned.", totalGroups, lockMsg, #KS.unassigned))
 
     if KS.UpdateGroupView then KS.UpdateGroupView() end
 end
@@ -101,7 +138,8 @@ end
 ---------------------------------------------------------------------------
 -- Utility balancing: try to give each group brez and lust coverage
 -- by swapping DPS between groups, preferring swaps between adjacent
--- groups (similar skill tiers) to minimize skill disruption
+-- groups (similar skill tiers) to minimize skill disruption.
+-- Skips locked groups.
 ---------------------------------------------------------------------------
 function KS.BalanceUtilities()
     local numGroups = #KS.groups
@@ -109,11 +147,13 @@ function KS.BalanceUtilities()
 
     for i = 1, numGroups do
         local group = KS.groups[i]
-        if not KS.GroupHasUtility(group, "hasBrez") then
-            KS.TrySwapForUtility(i, "hasBrez")
-        end
-        if not KS.GroupHasUtility(group, "hasLust") then
-            KS.TrySwapForUtility(i, "hasLust")
+        if not group.locked then
+            if not KS.GroupHasUtility(group, "hasBrez") then
+                KS.TrySwapForUtility(i, "hasBrez")
+            end
+            if not KS.GroupHasUtility(group, "hasLust") then
+                KS.TrySwapForUtility(i, "hasLust")
+            end
         end
     end
 end
@@ -140,40 +180,41 @@ function KS.GroupScore(group)
 end
 
 -- Swap DPS to cover a missing utility, preferring adjacent groups
--- (closer in skill tier) over distant ones
+-- (closer in skill tier) over distant ones. Skips locked groups.
 function KS.TrySwapForUtility(needGroupIdx, utilKey)
     local needGroup = KS.groups[needGroupIdx]
+    if needGroup.locked then return end
+
     local bestSwap = nil
-    local bestPriority = math.huge -- lower = better (distance + score diff)
+    local bestPriority = math.huge
 
     for otherIdx = 1, #KS.groups do
         if otherIdx ~= needGroupIdx then
             local otherGroup = KS.groups[otherIdx]
-            -- Prefer swapping with adjacent groups (similar skill tier)
-            local groupDistance = math.abs(otherIdx - needGroupIdx)
+            if not otherGroup.locked then
+                local groupDistance = math.abs(otherIdx - needGroupIdx)
 
-            for ni, needDPS in ipairs(needGroup.dps) do
-                if not needDPS[utilKey] then
-                    for oi, otherDPS in ipairs(otherGroup.dps) do
-                        if otherDPS[utilKey] then
-                            -- Check if the other group retains the utility after swap
-                            local otherStillHas = false
-                            if otherGroup.tank and otherGroup.tank[utilKey] then otherStillHas = true end
-                            if otherGroup.healer and otherGroup.healer[utilKey] then otherStillHas = true end
-                            for k, d in ipairs(otherGroup.dps) do
-                                if k ~= oi and d[utilKey] then otherStillHas = true end
-                            end
+                for ni, needDPS in ipairs(needGroup.dps) do
+                    if not needDPS[utilKey] then
+                        for oi, otherDPS in ipairs(otherGroup.dps) do
+                            if otherDPS[utilKey] then
+                                local otherStillHas = false
+                                if otherGroup.tank and otherGroup.tank[utilKey] then otherStillHas = true end
+                                if otherGroup.healer and otherGroup.healer[utilKey] then otherStillHas = true end
+                                for k, d in ipairs(otherGroup.dps) do
+                                    if k ~= oi and d[utilKey] then otherStillHas = true end
+                                end
 
-                            if otherStillHas then
-                                -- Priority: prefer adjacent groups, then minimize score disruption
-                                local scoreDiff = math.abs(needDPS.score - otherDPS.score)
-                                local priority = groupDistance * 100 + scoreDiff
-                                if priority < bestPriority then
-                                    bestPriority = priority
-                                    bestSwap = {
-                                        needGroupIdx = needGroupIdx, needDPSIdx = ni,
-                                        otherGroupIdx = otherIdx, otherDPSIdx = oi,
-                                    }
+                                if otherStillHas then
+                                    local scoreDiff = math.abs(needDPS.score - otherDPS.score)
+                                    local priority = groupDistance * 100 + scoreDiff
+                                    if priority < bestPriority then
+                                        bestPriority = priority
+                                        bestSwap = {
+                                            needGroupIdx = needGroupIdx, needDPSIdx = ni,
+                                            otherGroupIdx = otherIdx, otherDPSIdx = oi,
+                                        }
+                                    end
                                 end
                             end
                         end
@@ -183,13 +224,11 @@ function KS.TrySwapForUtility(needGroupIdx, utilKey)
         end
     end
 
-    -- Only swap if score disruption is reasonable
     if bestSwap then
         local needDPS = KS.groups[bestSwap.needGroupIdx].dps[bestSwap.needDPSIdx]
         local otherDPS = KS.groups[bestSwap.otherGroupIdx].dps[bestSwap.otherDPSIdx]
         local scoreDiff = math.abs(needDPS.score - otherDPS.score)
 
-        -- Allow wider threshold for adjacent groups, tighter for distant
         local groupDist = math.abs(bestSwap.needGroupIdx - bestSwap.otherGroupIdx)
         local threshold = groupDist <= 1 and (KS.SWAP_THRESHOLD * 3) or KS.SWAP_THRESHOLD
 

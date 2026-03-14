@@ -212,6 +212,11 @@ local PREVIEW_CLASSES = {
     "MONK", "DEMONHUNTER", "EVOKER",
 }
 
+-- Classes that can fill each role
+local PREVIEW_TANK_CLASSES = { "WARRIOR", "PALADIN", "DEATHKNIGHT", "DRUID", "MONK", "DEMONHUNTER" }
+local PREVIEW_HEALER_CLASSES = { "PRIEST", "PALADIN", "SHAMAN", "DRUID", "MONK", "EVOKER" }
+local PREVIEW_DPS_CLASSES = PREVIEW_CLASSES -- all classes can DPS
+
 function KS.TogglePreview()
     KS.previewMode = not KS.previewMode
 
@@ -248,16 +253,19 @@ function KS.GeneratePreviewData()
     local numHealers = math.max(numGroups, 1)
 
     for i = 1, numPlayers do
-        local role
+        local role, classPool
         if i <= numTanks then
             role = "TANK"
+            classPool = PREVIEW_TANK_CLASSES
         elseif i <= numTanks + numHealers then
             role = "HEALER"
+            classPool = PREVIEW_HEALER_CLASSES
         else
             role = "DAMAGER"
+            classPool = PREVIEW_DPS_CLASSES
         end
 
-        local classFile = PREVIEW_CLASSES[math.random(#PREVIEW_CLASSES)]
+        local classFile = classPool[math.random(#classPool)]
         local score = math.random(200, 3500)
         local numRuns = math.random(0, 8)
         local totalKeyLevel = 0
