@@ -19,6 +19,15 @@ function KS.CreateMainFrame()
     f:SetBackdropColor(0.08, 0.08, 0.08, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
+    -- Make the entire frame draggable
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint()
+        KeySorterDB.point = { point, nil, relPoint, x, y }
+    end)
+
     ---------------------------------------------------------------------------
     -- Sidebar
     ---------------------------------------------------------------------------
