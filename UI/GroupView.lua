@@ -254,34 +254,78 @@ local function StopDrag(line)
             end
         end
 
-        -- Role-aware slot resolution: if dropping onto an empty slot in a group,
-        -- redirect to the correct role slot if it's empty
-        if not dst.member and dst.groupIdx ~= 0 and src.member then
-            local group = ResolveGroup(dst.groupIdx)
-            if group then
-                local role = src.member.role
-                if role == "TANK" and not group.tank and dst.slot ~= "tank" then
-                    dst.slot = "tank"
-                    dst.slotIdx = nil
-                elseif role == "HEALER" and not group.healer and dst.slot ~= "healer" then
-                    dst.slot = "healer"
-                    dst.slotIdx = nil
-                elseif role == "DAMAGER" and dst.slot ~= "dps" then
-                    -- Find first empty DPS slot
-                    for di = 1, 3 do
-                        if not group.dps[di] then
-                            dst.slot = "dps"
-                            dst.slotIdx = di
-                            break
-                        end
+        -- Role-aware placement: resolve the correct slot for each member's role
+        local function FindRoleSlot(group, member, groupIdx)
+            if not member or not group then return nil, nil end
+            local role = member.role
+            if role == "TANK" and not group.tank then
+                return "tank", nil
+            elseif role == "HEALER" and not group.healer then
+                return "healer", nil
+            elseif role == "DAMAGER" then
+                for di = 1, 3 do
+                    if not group.dps[di] then
+                        return "dps", di
                     end
+                end
+            end
+            return nil, nil  -- no matching empty slot
+        end
+
+        -- For drops into groups (not unassigned), redirect to role-appropriate slot
+        if dst.groupIdx ~= 0 and src.member then
+            local dstGroup = ResolveGroup(dst.groupIdx)
+            if dstGroup then
+                -- If target slot is empty, redirect source member to correct role slot
+                if not dst.member then
+                    local newSlot, newSlotIdx = FindRoleSlot(dstGroup, src.member, dst.groupIdx)
+                    if newSlot then
+                        dst.slot = newSlot
+                        dst.slotIdx = newSlotIdx
+                    end
+                else
+                    -- Swap: after removing dst.member, place src.member in correct role slot
+                    -- First clear the dst slot, find the right slot for src, then place dst.member back at src
+                    -- We simulate by: remove dst, find slot for src, place src, then handle dst
+                    local srcMember = src.member
+                    local dstMember = dst.member
+
+                    -- Remove both from their current slots
+                    SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, nil)
+                    SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, nil)
+
+                    -- Place source member into destination group's correct role slot
+                    local srcNewSlot, srcNewSlotIdx = FindRoleSlot(dstGroup, srcMember, dst.groupIdx)
+                    if not srcNewSlot then
+                        srcNewSlot = dst.slot
+                        srcNewSlotIdx = dst.slotIdx
+                    end
+                    SetMemberInSlot(dst.groupIdx, srcNewSlot, srcNewSlotIdx, srcMember)
+
+                    -- Place destination member into source group's correct role slot
+                    if src.groupIdx == 0 then
+                        table.insert(KS.unassigned, dstMember)
+                    else
+                        local srcGroup = ResolveGroup(src.groupIdx)
+                        local dstNewSlot, dstNewSlotIdx = FindRoleSlot(srcGroup, dstMember, src.groupIdx)
+                        if not dstNewSlot then
+                            dstNewSlot = src.slot
+                            dstNewSlotIdx = src.slotIdx
+                        end
+                        SetMemberInSlot(src.groupIdx, dstNewSlot, dstNewSlotIdx, dstMember)
+                    end
+
+                    -- Skip the normal swap below
+                    goto swapDone
                 end
             end
         end
 
-        -- Move/swap the members
+        -- Move/swap the members (simple case: empty target or unassigned)
         SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
         SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
+
+        ::swapDone::
 
         -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then
@@ -524,6 +568,26 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     for dIdx = 1, math.max(#group.dps, 3) do
         CreateMemberLine(card, y, "DAMAGER", group.dps[dIdx], groupIdx, "dps", dIdx)
         y = y - MEMBER_HEIGHT
+    end
+
+    -- Check group composition validity (1T + 1H + 3D = valid)
+    local memberCount = 0
+    if group.tank then memberCount = memberCount + 1 end
+    if group.healer then memberCount = memberCount + 1 end
+    memberCount = memberCount + #group.dps
+    local isValid = group.tank and group.healer and #group.dps == 3
+    local isEmpty = memberCount == 0
+
+    if not isValid and not isEmpty and not group.locked then
+        -- Red border for invalid composition
+        card:SetBorderColor(0.6, 0.15, 0.15, 1)
+
+        -- Warning icon next to the group header
+        local warnIcon = card:CreateTexture(nil, "OVERLAY")
+        warnIcon:SetSize(12, 12)
+        warnIcon:SetPoint("LEFT", avgText, "RIGHT", 6, 0)
+        warnIcon:SetTexture(KS.MEDIA.Warning)
+        warnIcon:SetVertexColor(0.9, 0.3, 0.1)
     end
 
     return card

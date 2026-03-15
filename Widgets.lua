@@ -45,6 +45,7 @@ KS.MEDIA = {
     LogoFull     = MEDIA_PATH .. "LogoFull",
     LogoKS       = MEDIA_PATH .. "LogoKS",
     IconGather   = MEDIA_PATH .. "IconGather",
+    Warning      = MEDIA_PATH .. "Warning",
 }
 
 ---------------------------------------------------------------------------
