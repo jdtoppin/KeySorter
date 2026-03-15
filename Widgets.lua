@@ -159,12 +159,8 @@ function KS.CreateButton(parent, text, colorName, width, height)
 
     btn:SetScript("OnEnter", function(self)
         if self._disabled then return end
-        if self._animHighlight then
-            AnimateButtonHighlight(self, self:GetHeight() - 2, 0.15)
-            self._animTex:Show()
-        else
-            self:SetBackdropColor(unpack(self._color.h))
-        end
+        -- Hover: brighten colors only (no fill animation)
+        self:SetBackdropColor(unpack(self._color.h))
         if self._highlightBorder then
             self._highlightBorder()
         else
@@ -176,11 +172,7 @@ function KS.CreateButton(parent, text, colorName, width, height)
     btn:SetScript("OnLeave", function(self)
         if self._disabled then return end
         if self._locked then return end
-        if self._animHighlight then
-            AnimateButtonHighlight(self, 1, 0.1)
-        else
-            self:SetBackdropColor(unpack(self._color.n))
-        end
+        self:SetBackdropColor(unpack(self._color.n))
         if self._unhighlightBorder then
             self._unhighlightBorder()
         else
@@ -613,28 +605,28 @@ function KS.CreateDropdown(parent, width)
         end)
     end
 
-    -- Hover
+    -- Hover: brighten only (no fill animation)
     dd:SetScript("OnEnter", function(self)
         self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
         arrow:SetVertexColor(1, 1, 1)
-        AnimateDDHighlight(self:GetHeight() - 2, 0.15)
-        ddHighlight:Show()
     end)
     dd:SetScript("OnLeave", function(self)
         self:SetBackdropBorderColor(unpack(self._borderColor))
         arrow:SetVertexColor(0.7, 0.7, 0.7)
-        AnimateDDHighlight(1, 0.1)
     end)
 
-    -- Push effect
+    -- Click: fill animation + push effect
     dd:RegisterForClicks("LeftButtonUp")
     dd:SetScript("OnMouseDown", function(self)
         label:SetPoint("LEFT", 6, -1)
         arrow:SetPoint("RIGHT", -6, -1)
+        ddHighlight:Show()
+        AnimateDDHighlight(self:GetHeight() - 2, 0.1)
     end)
     dd:SetScript("OnMouseUp", function(self)
         label:SetPoint("LEFT", 6, 0)
         arrow:SetPoint("RIGHT", -6, 0)
+        AnimateDDHighlight(1, 0.15)
     end)
 
     local function BuildList()
@@ -1072,17 +1064,14 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
         icon:SetPoint("CENTER", 0, 0)
     end)
 
-    -- Hover
+    -- Hover: brighten icon only (no fill animation)
     btn:SetScript("OnEnter", function(self)
-        AnimateCBHighlight(self:GetHeight() - 2, 0.15)
-        cbHighlight:Show()
         if not self._checked then
             icon:SetVertexColor(0.6, 0.6, 0.6, 0.8)
             self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
         end
     end)
     btn:SetScript("OnLeave", function(self)
-        AnimateCBHighlight(1, 0.1)
         UpdateVisual()
     end)
 
