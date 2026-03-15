@@ -254,75 +254,10 @@ local function StopDrag(line)
             end
         end
 
-        -- Role-aware placement: resolve the correct slot for each member's role
-        local function FindRoleSlot(group, member, groupIdx)
-            if not member or not group then return nil, nil end
-            local role = member.role
-            if role == "TANK" and not group.tank then
-                return "tank", nil
-            elseif role == "HEALER" and not group.healer then
-                return "healer", nil
-            elseif role == "DAMAGER" then
-                for di = 1, 3 do
-                    if not group.dps[di] then
-                        return "dps", di
-                    end
-                end
-            end
-            return nil, nil  -- no matching empty slot
-        end
-
-        -- For drops into groups (not unassigned), redirect to role-appropriate slot
-        local swapHandled = false
-        if dst.groupIdx ~= 0 and src.member then
-            local dstGroup = ResolveGroup(dst.groupIdx)
-            if dstGroup then
-                if not dst.member then
-                    -- Empty slot: redirect to correct role slot
-                    local newSlot, newSlotIdx = FindRoleSlot(dstGroup, src.member, dst.groupIdx)
-                    if newSlot then
-                        dst.slot = newSlot
-                        dst.slotIdx = newSlotIdx
-                    end
-                else
-                    -- Swap: place each member in the correct role slot
-                    swapHandled = true
-                    local srcMember = src.member
-                    local dstMember = dst.member
-
-                    -- Remove both from their current slots
-                    SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, nil)
-                    SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, nil)
-
-                    -- Place source member into destination group's correct role slot
-                    local srcNewSlot, srcNewSlotIdx = FindRoleSlot(dstGroup, srcMember, dst.groupIdx)
-                    if not srcNewSlot then
-                        srcNewSlot = dst.slot
-                        srcNewSlotIdx = dst.slotIdx
-                    end
-                    SetMemberInSlot(dst.groupIdx, srcNewSlot, srcNewSlotIdx, srcMember)
-
-                    -- Place destination member into source group's correct role slot
-                    if src.groupIdx == 0 then
-                        table.insert(KS.unassigned, dstMember)
-                    else
-                        local srcGroup = ResolveGroup(src.groupIdx)
-                        local dstNewSlot, dstNewSlotIdx = FindRoleSlot(srcGroup, dstMember, src.groupIdx)
-                        if not dstNewSlot then
-                            dstNewSlot = src.slot
-                            dstNewSlotIdx = src.slotIdx
-                        end
-                        SetMemberInSlot(src.groupIdx, dstNewSlot, dstNewSlotIdx, dstMember)
-                    end
-                end
-            end
-        end
-
-        -- Simple move/swap (empty target or unassigned, or no role redirect needed)
-        if not swapHandled then
-            SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
-            SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
-        end
+        -- Simple swap: place each member exactly where dropped
+        -- No role redirection — the warning system shows invalid compositions
+        SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
+        SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
 
         -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then
@@ -361,8 +296,9 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
     line:SetHeight(MEMBER_HEIGHT)
     line:EnableMouse(groupIdx ~= nil) -- enable mouse for all slots with group metadata
 
-    -- Role icon
-    local roleAtlas = KS.ROLE_ICONS[label]
+    -- Role icon — show the member's actual role, not the slot's expected role
+    local displayRole = (member and member.role) or label
+    local roleAtlas = KS.ROLE_ICONS[displayRole]
     if roleAtlas then
         local icon = line:CreateTexture(nil, "OVERLAY")
         icon:SetSize(12, 12)
@@ -567,12 +503,24 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
         y = y - MEMBER_HEIGHT
     end
 
-    -- Check group composition validity (1T + 1H + 3D = valid)
+    -- Check group composition validity
+    -- Valid = 1 tank (role TANK) + 1 healer (role HEALER) + 3 DPS (role DAMAGER)
+    -- Also check role mismatches (e.g., healer in tank slot)
     local memberCount = 0
-    if group.tank then memberCount = memberCount + 1 end
-    if group.healer then memberCount = memberCount + 1 end
-    memberCount = memberCount + #group.dps
-    local isValid = group.tank and group.healer and #group.dps == 3
+    local roleMismatch = false
+    if group.tank then
+        memberCount = memberCount + 1
+        if group.tank.role ~= "TANK" then roleMismatch = true end
+    end
+    if group.healer then
+        memberCount = memberCount + 1
+        if group.healer.role ~= "HEALER" then roleMismatch = true end
+    end
+    for _, d in ipairs(group.dps) do
+        memberCount = memberCount + 1
+        if d.role ~= "DAMAGER" then roleMismatch = true end
+    end
+    local isValid = group.tank and group.healer and #group.dps == 3 and not roleMismatch
     local isEmpty = memberCount == 0
 
     if not isValid and not isEmpty and not group.locked then
