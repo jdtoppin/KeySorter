@@ -15,17 +15,51 @@ local scrollFrame, scrollChild
 local rows = {}
 local headerTexts = {}  -- label FontStrings per column index
 
-local COLUMNS = {
-    { key = "name",        label = "Name",        width = 120, align = "LEFT",   sortable = true },
-    { key = "role",        label = "Role",        width = 40,  align = "CENTER", sortable = true },
-    { key = "score",       label = "Score",       width = 62,  align = "RIGHT",  sortable = true },
-    { key = "ilvl",        label = "iLvl",        width = 52,  align = "RIGHT",  sortable = true },
-    { key = "avgKeyLevel", label = "Avg Key",     width = 76,  align = "RIGHT",  sortable = true },
-    { key = "numTimed",    label = "Timed",       width = 60,  align = "RIGHT",  sortable = true },
-    { key = "numUntimed",  label = "Untimed",     width = 68,  align = "RIGHT",  sortable = true },
-    { key = "numRuns",     label = "Total",       width = 56,  align = "RIGHT",  sortable = true },
-    { key = "utilityCount", label = "Utility",     width = 70,  align = "CENTER", sortable = true },
+local BASE_COLUMNS = {
+    { key = "name",        label = "Name",        baseWidth = 120, minWidth = 60, flex = true, align = "LEFT",   sortable = true },
+    { key = "role",        label = "Role",        baseWidth = 40,  minWidth = 30, align = "CENTER", sortable = true },
+    { key = "score",       label = "Score",       baseWidth = 62,  minWidth = 45, align = "RIGHT",  sortable = true },
+    { key = "ilvl",        label = "iLvl",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel", label = "Avg Key",     baseWidth = 76,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "numTimed",    label = "Timed",       baseWidth = 60,  minWidth = 42, align = "RIGHT",  sortable = true },
+    { key = "numUntimed",  label = "Untimed",     baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "numRuns",     label = "Total",       baseWidth = 56,  minWidth = 40, align = "RIGHT",  sortable = true },
+    { key = "utilityCount", label = "Utility",     baseWidth = 70,  minWidth = 50, align = "CENTER", sortable = true },
 }
+
+-- Working column widths (recalculated on resize)
+local COLUMNS = {}
+for i, col in ipairs(BASE_COLUMNS) do
+    COLUMNS[i] = { key = col.key, label = col.label, width = col.baseWidth, align = col.align, sortable = col.sortable }
+end
+
+local function RecalcColumnWidths(availableWidth)
+    local fixedTotal = 4  -- left margin
+    local flexIdx = nil
+    for i, col in ipairs(BASE_COLUMNS) do
+        if col.flex then
+            flexIdx = i
+        else
+            fixedTotal = fixedTotal + col.baseWidth
+        end
+    end
+
+    if flexIdx then
+        -- Flex column gets remaining space
+        local flexWidth = math.max(BASE_COLUMNS[flexIdx].minWidth, availableWidth - fixedTotal - 4)
+        COLUMNS[flexIdx].width = flexWidth
+    end
+
+    -- If very narrow, scale all columns proportionally
+    local totalBase = 4
+    for _, col in ipairs(BASE_COLUMNS) do totalBase = totalBase + col.baseWidth end
+    if availableWidth < totalBase then
+        local scale = math.max(0.5, availableWidth / totalBase)
+        for i, col in ipairs(BASE_COLUMNS) do
+            COLUMNS[i].width = math.max(col.minWidth, math.floor(col.baseWidth * scale))
+        end
+    end
+end
 
 local function GetColumnX(idx)
     local x = 4
@@ -33,6 +67,12 @@ local function GetColumnX(idx)
         x = x + COLUMNS[i].width
     end
     return x
+end
+
+local function GetTotalColumnWidth()
+    local w = 4
+    for _, col in ipairs(COLUMNS) do w = w + col.width end
+    return w
 end
 
 local function CompareMembers(a, b)
@@ -229,16 +269,16 @@ local function CreateRow(parent, index)
     for ci, col in ipairs(COLUMNS) do
         local fs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         local x = GetColumnX(ci)
-        if col.align == "LEFT" then
-            fs:SetPoint("LEFT", x, 0)
-        elseif col.align == "RIGHT" then
-            fs:SetPoint("LEFT", x, 0)
+        fs:SetPoint("LEFT", x, 0)
+        fs:SetWordWrap(false)
+        if col.align == "RIGHT" then
             fs:SetWidth(col.width - 4)
             fs:SetJustifyH("RIGHT")
-        else
-            fs:SetPoint("LEFT", x, 0)
+        elseif col.align == "CENTER" then
             fs:SetWidth(col.width)
             fs:SetJustifyH("CENTER")
+        else
+            fs:SetWidth(col.width)
         end
         row.texts[ci] = fs
     end
@@ -336,8 +376,7 @@ function KS.CreateRosterView(parent)
     -- Column headers with sort arrows
     ---------------------------------------------------------------------------
     -- Calculate total column width for minimum sizing
-    local totalColWidth = 4
-    for _, col in ipairs(COLUMNS) do totalColWidth = totalColWidth + col.width end
+    local headerBtns = {} -- header button/frame per column index
 
     local headerBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     headerBar:SetPoint("TOPLEFT", 0, -TOOLBAR_HEIGHT)
@@ -347,12 +386,6 @@ function KS.CreateRosterView(parent)
     headerBar:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
     headerBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
 
-    -- Ensure header doesn't shrink below column width
-    headerBar:SetScript("OnSizeChanged", function(self, w)
-        if w < totalColWidth then
-            self:SetWidth(totalColWidth)
-        end
-    end)
 
     for ci, col in ipairs(COLUMNS) do
         local x = GetColumnX(ci)
@@ -361,6 +394,7 @@ function KS.CreateRosterView(parent)
             local btn = CreateFrame("Button", nil, headerBar)
             btn:SetPoint("LEFT", x, 0)
             btn:SetSize(col.width, HEADER_HEIGHT)
+            headerBtns[ci] = btn
 
             -- Column label — match alignment with row data
             local text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -427,9 +461,65 @@ function KS.CreateRosterView(parent)
     scrollFrame:SetPoint("TOPLEFT", 0, -(TOOLBAR_HEIGHT + HEADER_HEIGHT))
     scrollFrame:SetPoint("BOTTOMRIGHT", -14, 0)
 
-    -- Ensure scroll child is wide enough for all columns (prevents clipping at high UI scale)
-    scrollChild._minWidth = totalColWidth
-    scrollChild:SetWidth(math.max(scrollChild:GetWidth(), totalColWidth))
+    -- Responsive column resizing
+    local function RepositionColumns()
+        local availWidth = parent:GetWidth()
+        if availWidth < 1 then return end
+        RecalcColumnWidths(availWidth)
+
+        -- Reposition header buttons
+        for ci, col in ipairs(COLUMNS) do
+            local x = GetColumnX(ci)
+            if headerBtns[ci] then
+                headerBtns[ci]:ClearAllPoints()
+                headerBtns[ci]:SetPoint("LEFT", x, 0)
+                headerBtns[ci]:SetSize(col.width, HEADER_HEIGHT)
+            end
+            -- Update header text width
+            if headerTexts[ci] then
+                local ht = headerTexts[ci]
+                ht:ClearAllPoints()
+                if col.align == "RIGHT" then
+                    ht:SetPoint("LEFT", 0, 0)
+                    ht:SetWidth(col.width - 4)
+                elseif col.align == "CENTER" then
+                    ht:SetPoint("LEFT", 0, 0)
+                    ht:SetWidth(col.width)
+                else
+                    ht:SetPoint("LEFT", 2, 0)
+                end
+            end
+        end
+
+        -- Reposition row text elements
+        for _, row in ipairs(rows) do
+            for ci, col in ipairs(COLUMNS) do
+                local x = GetColumnX(ci)
+                local fs = row.texts[ci]
+                if fs then
+                    fs:ClearAllPoints()
+                    fs:SetPoint("LEFT", x, 0)
+                    if col.align == "RIGHT" then
+                        fs:SetWidth(col.width - 4)
+                        fs:SetJustifyH("RIGHT")
+                    elseif col.align == "CENTER" then
+                        fs:SetWidth(col.width)
+                        fs:SetJustifyH("CENTER")
+                    end
+                end
+            end
+        end
+
+        -- Update scroll child min width
+        scrollChild._minWidth = GetTotalColumnWidth()
+        scrollChild:SetWidth(math.max(scrollChild:GetWidth(), scrollChild._minWidth))
+
+        UpdateSortIndicators()
+    end
+
+    parent:HookScript("OnSizeChanged", function()
+        RepositionColumns()
+    end)
 
     filterIdx = KeySorterDB.filterIdx or 1
 end

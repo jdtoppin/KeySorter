@@ -94,7 +94,7 @@ function KS.CreateAboutView(parent)
     ---------------------------------------------------------------------------
     -- Hero Header
     ---------------------------------------------------------------------------
-    local title = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    local title = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 8, y)
     title:SetText("KeySorter")
     title:SetTextColor(0, 0.8, 1)
