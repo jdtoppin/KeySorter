@@ -314,12 +314,13 @@ end
 function KS.CreateResizeButton(parent)
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(16, 16)
-    btn:SetPoint("BOTTOMRIGHT", -2, 2)
+    btn:SetPoint("BOTTOMRIGHT", -1, 1)
+    btn:SetFrameLevel(parent:GetFrameLevel() + 15) -- above scrollbar
 
-    -- Grip dots (3x3 pattern in bottom-right corner)
+    -- Grip dots
     local grip = btn:CreateTexture(nil, "OVERLAY")
-    grip:SetSize(12, 12)
-    grip:SetPoint("BOTTOMRIGHT", -1, 1)
+    grip:SetSize(10, 10)
+    grip:SetPoint("BOTTOMRIGHT", -2, 2)
     grip:SetColorTexture(0.3, 0.3, 0.3, 0.8)
     btn._grip = grip
 

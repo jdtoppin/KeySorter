@@ -335,6 +335,10 @@ function KS.CreateRosterView(parent)
     ---------------------------------------------------------------------------
     -- Column headers with sort arrows
     ---------------------------------------------------------------------------
+    -- Calculate total column width for minimum sizing
+    local totalColWidth = 4
+    for _, col in ipairs(COLUMNS) do totalColWidth = totalColWidth + col.width end
+
     local headerBar = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     headerBar:SetPoint("TOPLEFT", 0, -TOOLBAR_HEIGHT)
     headerBar:SetPoint("TOPRIGHT", 0, -TOOLBAR_HEIGHT)
@@ -342,6 +346,13 @@ function KS.CreateRosterView(parent)
     headerBar:SetBackdrop(KS.BACKDROP)
     headerBar:SetBackdropColor(0.15, 0.15, 0.15, 0.9)
     headerBar:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+
+    -- Ensure header doesn't shrink below column width
+    headerBar:SetScript("OnSizeChanged", function(self, w)
+        if w < totalColWidth then
+            self:SetWidth(totalColWidth)
+        end
+    end)
 
     for ci, col in ipairs(COLUMNS) do
         local x = GetColumnX(ci)
@@ -417,8 +428,6 @@ function KS.CreateRosterView(parent)
     scrollFrame:SetPoint("BOTTOMRIGHT", -14, 0)
 
     -- Ensure scroll child is wide enough for all columns (prevents clipping at high UI scale)
-    local totalColWidth = 4
-    for _, col in ipairs(COLUMNS) do totalColWidth = totalColWidth + col.width end
     scrollChild._minWidth = totalColWidth
     scrollChild:SetWidth(math.max(scrollChild:GetWidth(), totalColWidth))
 

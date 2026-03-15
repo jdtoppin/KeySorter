@@ -46,6 +46,7 @@ function KS.CreateMainFrame()
     local contentArea = CreateFrame("Frame", nil, f)
     contentArea:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 0, 0)
     contentArea:SetPoint("BOTTOMRIGHT", -1, 1)
+    contentArea:SetClipsChildren(true)  -- clip content that overflows when window is narrow
     KS.contentArea = contentArea
 
     ---------------------------------------------------------------------------
