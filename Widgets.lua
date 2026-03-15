@@ -1027,16 +1027,20 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
         end)
     end
 
-    local function UpdateVisual()
+    local function UpdateVisual(skipAnim)
         if btn._checked then
             icon:SetVertexColor(ACCENT_R, ACCENT_G, ACCENT_B, 1)
             btn:SetBackdropBorderColor(ACCENT_R, ACCENT_G, ACCENT_B, 0.8)
-            cbHighlight:Show()
-            cbHighlight:SetHeight(btn:GetHeight() - 2)
+            if skipAnim then
+                cbHighlight:Show()
+                cbHighlight:SetHeight(btn:GetHeight() - 2)
+            end
         else
             icon:SetVertexColor(0.3, 0.3, 0.3, 0.5)
             btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-            cbHighlight:SetHeight(1)
+            if skipAnim then
+                cbHighlight:SetHeight(1)
+            end
         end
         btn._borderColor = btn._checked
             and { ACCENT_R, ACCENT_G, ACCENT_B, 0.8 }
@@ -1045,7 +1049,7 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
 
     btn:SetScript("OnClick", function(self)
         self._checked = not self._checked
-        UpdateVisual()
+        UpdateVisual(false) -- don't set height, let animation do it
         -- Animate fill on check/uncheck
         if self._checked then
             cbHighlight:Show()
@@ -1072,12 +1076,12 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
         end
     end)
     btn:SetScript("OnLeave", function(self)
-        UpdateVisual()
+        UpdateVisual(true)
     end)
 
     function btn:SetChecked(checked)
         self._checked = checked
-        UpdateVisual()
+        UpdateVisual(true) -- skip animation for programmatic state changes
     end
 
     function btn:IsChecked()
@@ -1088,6 +1092,6 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
         self._onToggle = fn
     end
 
-    UpdateVisual()
+    UpdateVisual(true)
     return btn
 end
