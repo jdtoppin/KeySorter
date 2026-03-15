@@ -527,12 +527,16 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
         -- Red border for invalid composition
         card:SetBorderColor(0.6, 0.15, 0.15, 1)
 
-        -- Warning icon next to the group header
-        local warnIcon = card:CreateTexture(nil, "OVERLAY")
-        warnIcon:SetSize(12, 12)
-        warnIcon:SetPoint("LEFT", avgText, "RIGHT", 6, 0)
+        -- Warning icon next to the group header (in a frame for tooltip support)
+        local warnFrame = CreateFrame("Frame", nil, card)
+        warnFrame:SetSize(14, 14)
+        warnFrame:SetPoint("LEFT", avgText, "RIGHT", 6, 0)
+        local warnIcon = warnFrame:CreateTexture(nil, "OVERLAY")
+        warnIcon:SetAllPoints()
         warnIcon:SetTexture(KS.MEDIA.Warning)
         warnIcon:SetVertexColor(0.9, 0.3, 0.1)
+        warnFrame:EnableMouse(true)
+        KS.SetTooltip(warnFrame, "ANCHOR_RIGHT", {"Invalid Composition", "This group does not have the correct 1 Tank, 1 Healer, 3 DPS ratio."})
     end
 
     return card
