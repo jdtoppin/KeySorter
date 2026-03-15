@@ -592,28 +592,6 @@ function KS.CreateDropdown(parent, width)
     dd._selectedValue = nil
     dd._onSelect = nil
 
-    -- Animated highlight fill (matching button style)
-    local ddHighlight = dd:CreateTexture(nil, "BORDER")
-    ddHighlight:SetPoint("BOTTOMLEFT", 1, 1)
-    ddHighlight:SetPoint("BOTTOMRIGHT", -1, 1)
-    ddHighlight:SetHeight(1)
-    ddHighlight:SetColorTexture(ACCENT_R, ACCENT_G, ACCENT_B, 0.5)
-
-    local function AnimateDDHighlight(targetHeight, duration)
-        local startHeight = ddHighlight:GetHeight()
-        if startHeight < 1 then startHeight = 1 end
-        local elapsed = 0
-        dd:SetScript("OnUpdate", function(self, dt)
-            elapsed = elapsed + dt
-            local t = math.min(elapsed / duration, 1)
-            local h = startHeight + (targetHeight - startHeight) * t
-            ddHighlight:SetHeight(math.max(h, 1))
-            if t >= 1 then
-                self:SetScript("OnUpdate", nil)
-            end
-        end)
-    end
-
     -- Hover: brighten only (no fill animation)
     dd:SetScript("OnEnter", function(self)
         self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
@@ -694,9 +672,6 @@ function KS.CreateDropdown(parent, width)
                 dd._selectedValue = item.value
                 label:SetText(item.text)
                 list:Hide()
-                -- Selection animation on the dropdown trigger: fill up and stay
-                ddHighlight:Show()
-                AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
                 if dd._onSelect then dd._onSelect(item.value, item.text, i) end
             end)
             mb:Show()
@@ -711,7 +686,18 @@ function KS.CreateDropdown(parent, width)
             KS.CloseDropdown()
             list._currentOwner = dd
             BuildList()
+            -- Fade in the dropdown list
+            list:SetAlpha(0)
             list:Show()
+            local elapsed = 0
+            list:SetScript("OnUpdate", function(self, dt)
+                elapsed = elapsed + dt
+                local t = math.min(elapsed / 0.1, 1)
+                self:SetAlpha(t)
+                if t >= 1 then
+                    self:SetScript("OnUpdate", nil)
+                end
+            end)
             arrow:SetTexture(KS.MEDIA.ArrowUp)
         end
     end)
