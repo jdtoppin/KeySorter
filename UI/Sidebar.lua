@@ -174,7 +174,7 @@ function KS.CreateSidebar(parent)
         else
             local btn = CreateNavButton(item, navY)
             buttons[item.key] = btn
-            navY = navY - BUTTON_HEIGHT - 2
+            navY = navY - BUTTON_HEIGHT - 6
         end
     end
 

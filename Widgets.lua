@@ -579,11 +579,12 @@ function KS.CreateDropdown(parent, width)
     dd:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
     dd._borderColor = { 0.3, 0.3, 0.3, 1 }
 
-    -- Label text
+    -- Label text (no word wrap — truncate instead)
     local label = dd:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     label:SetPoint("LEFT", 6, 0)
     label:SetPoint("RIGHT", -20, 0)
     label:SetJustifyH("LEFT")
+    label:SetWordWrap(false)
     label:SetText("Select...")
     dd._label = label
 
