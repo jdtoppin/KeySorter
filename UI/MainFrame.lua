@@ -154,7 +154,8 @@ function KS.CreateMainFrame()
     local glowActive = false
 
     function KS.UpdateSortGlow()
-        if #KS.unassigned > 0 then
+        -- Glow when there are unassigned players OR when roster has players but no groups yet
+        if #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0) then
             if not glowActive then
                 glowActive = true
                 sortGlow:Show()
