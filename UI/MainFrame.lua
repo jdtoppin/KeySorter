@@ -123,7 +123,7 @@ function KS.CreateMainFrame()
     for _, mode in ipairs(KS.SORT_MODES) do
         table.insert(switchOptions, { text = mode.label, value = mode.key })
     end
-    local sortSwitch = KS.CreateSwitch(groupsToolbar, 180, 22, switchOptions)
+    local sortSwitch = KS.CreateSwitch(groupsToolbar, 240, 22, switchOptions)
     sortSwitch:SetPoint("LEFT", sortBtnGroups, "RIGHT", 8, 0)
     sortSwitch:SetSelectedValue(KS.sortMode)
     sortSwitch:SetOnSelect(function(value)
@@ -144,19 +144,23 @@ function KS.CreateMainFrame()
     local settingsCreated = false
 
     local function SetTabInternal(tab)
-        -- Lazy-create About and Settings on first visit (needs actual frame width for text wrap)
-        if tab == "about" and not aboutCreated then
-            aboutCreated = true
-            KS.CreateAboutView(aboutContent)
-        elseif tab == "settings" and not settingsCreated then
-            settingsCreated = true
-            KS.CreateSettingsView(settingsContent)
-        end
-
         for name, content in pairs(tabContents) do
             if name == tab then content:Show() else content:Hide() end
         end
         sidebar:SelectButton(tab)
+
+        -- Lazy-create About and Settings after frame is shown (needs actual width for text wrap)
+        if tab == "about" and not aboutCreated then
+            aboutCreated = true
+            C_Timer.After(0, function()
+                KS.CreateAboutView(aboutContent)
+            end)
+        elseif tab == "settings" and not settingsCreated then
+            settingsCreated = true
+            C_Timer.After(0, function()
+                KS.CreateSettingsView(settingsContent)
+            end)
+        end
 
         if tab == "groups" then
             -- Auto-sort if no groups exist yet

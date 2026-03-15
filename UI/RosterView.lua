@@ -266,7 +266,7 @@ function KS.CreateRosterView(parent)
         table.insert(ddItems, { text = thresh.label, value = i })
     end
 
-    local filterDD = KS.CreateDropdown(toolbar, 80)
+    local filterDD = KS.CreateDropdown(toolbar, 100)
     filterDD:SetPoint("LEFT", 4, 0)
     filterDD:SetItems(ddItems)
     filterDD:SetSelected(KeySorterDB.filterIdx or 1)
@@ -277,7 +277,7 @@ function KS.CreateRosterView(parent)
     end)
 
     -- Role filter
-    local roleDD = KS.CreateDropdown(toolbar, 64)
+    local roleDD = KS.CreateDropdown(toolbar, 82)
     roleDD:SetPoint("LEFT", filterDD, "RIGHT", 4, 0)
     roleDD:SetItems({
         { text = "All Roles", value = "ALL" },
@@ -292,7 +292,7 @@ function KS.CreateRosterView(parent)
     end)
 
     -- Utility filter
-    local utilDD = KS.CreateDropdown(toolbar, 64)
+    local utilDD = KS.CreateDropdown(toolbar, 78)
     utilDD:SetPoint("LEFT", roleDD, "RIGHT", 4, 0)
     utilDD:SetItems({
         { text = "All Util", value = "ALL" },
@@ -307,7 +307,7 @@ function KS.CreateRosterView(parent)
     end)
 
     -- Timed runs filter
-    local timedDD = KS.CreateDropdown(toolbar, 68)
+    local timedDD = KS.CreateDropdown(toolbar, 82)
     timedDD:SetPoint("LEFT", utilDD, "RIGHT", 4, 0)
     timedDD:SetItems({
         { text = "All Timed", value = 0 },
