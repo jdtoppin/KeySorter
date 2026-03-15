@@ -249,9 +249,33 @@ local function StopDrag(line)
         if not dst.member and dst.groupIdx ~= 0 then
             local group = ResolveGroup(dst.groupIdx)
             if group and CountGroupMembers(dst.groupIdx) >= 5 then
-                -- Group is full, can't place here
                 dragSource = nil
                 return
+            end
+        end
+
+        -- Role-aware slot resolution: if dropping onto an empty slot in a group,
+        -- redirect to the correct role slot if it's empty
+        if not dst.member and dst.groupIdx ~= 0 and src.member then
+            local group = ResolveGroup(dst.groupIdx)
+            if group then
+                local role = src.member.role
+                if role == "TANK" and not group.tank and dst.slot ~= "tank" then
+                    dst.slot = "tank"
+                    dst.slotIdx = nil
+                elseif role == "HEALER" and not group.healer and dst.slot ~= "healer" then
+                    dst.slot = "healer"
+                    dst.slotIdx = nil
+                elseif role == "DAMAGER" and dst.slot ~= "dps" then
+                    -- Find first empty DPS slot
+                    for di = 1, 3 do
+                        if not group.dps[di] then
+                            dst.slot = "dps"
+                            dst.slotIdx = di
+                            break
+                        end
+                    end
+                end
             end
         end
 
