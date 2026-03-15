@@ -130,9 +130,12 @@ local function BuildContent(member)
     yL = yL - SECTION_GAP
     yL = AddSectionHeader(yL, "Utilities", leftX, colWidth - 16)
     local function utilColor(has) return has and 0 or 0.5, has and 0.8 or 0.5, has and 0 or 0.5 end
-    yL = AddLabelValue(yL, "Battle Rez", member.hasBrez and "Yes" or "No", utilColor(member.hasBrez), leftX)
-    yL = AddLabelValue(yL, "Bloodlust", member.hasLust and "Yes" or "No", utilColor(member.hasLust), leftX)
-    yL = AddLabelValue(yL, "Shroud", member.hasShroud and "Yes" or "No", utilColor(member.hasShroud), leftX)
+    local br_r, br_g, br_b = utilColor(member.hasBrez)
+    yL = AddLabelValue(yL, "Battle Rez", member.hasBrez and "Yes" or "No", br_r, br_g, br_b, leftX)
+    local bl_r, bl_g, bl_b = utilColor(member.hasLust)
+    yL = AddLabelValue(yL, "Bloodlust", member.hasLust and "Yes" or "No", bl_r, bl_g, bl_b, leftX)
+    local sh_r, sh_g, sh_b = utilColor(member.hasShroud)
+    yL = AddLabelValue(yL, "Shroud", member.hasShroud and "Yes" or "No", sh_r, sh_g, sh_b, leftX)
 
     -- Key Thresholds
     if member.dataSource == "raiderio" or (member.keystoneFivePlus and member.keystoneFivePlus > 0) then

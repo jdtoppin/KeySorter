@@ -211,6 +211,36 @@ function KS.ReconcileGroups()
         group.dps = newDps
     end
 
+    -- Reconcile incomplete groups the same way
+    if KS.incompleteGroups then
+        for _, group in ipairs(KS.incompleteGroups) do
+            if group.tank then
+                if rosterNames[group.tank.name] then
+                    group.tank = rosterNames[group.tank.name]
+                    assignedNames[group.tank.name] = true
+                else
+                    group.tank = nil
+                end
+            end
+            if group.healer then
+                if rosterNames[group.healer.name] then
+                    group.healer = rosterNames[group.healer.name]
+                    assignedNames[group.healer.name] = true
+                else
+                    group.healer = nil
+                end
+            end
+            local newDps = {}
+            for _, d in ipairs(group.dps) do
+                if rosterNames[d.name] then
+                    table.insert(newDps, rosterNames[d.name])
+                    assignedNames[d.name] = true
+                end
+            end
+            group.dps = newDps
+        end
+    end
+
     -- Also update unassigned — remove departed, keep existing
     local newUnassigned = {}
     for _, member in ipairs(KS.unassigned) do

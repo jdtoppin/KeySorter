@@ -519,9 +519,12 @@ function KS.CreateRosterView(parent)
         UpdateSortIndicators()
     end
 
-    parent:HookScript("OnSizeChanged", function()
-        RepositionColumns()
-    end)
+    if not parent._rosterResizeHooked then
+        parent._rosterResizeHooked = true
+        parent:HookScript("OnSizeChanged", function()
+            RepositionColumns()
+        end)
+    end
 
     filterIdx = KeySorterDB.filterIdx or 1
 end

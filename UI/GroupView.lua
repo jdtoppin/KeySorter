@@ -193,13 +193,25 @@ end
 
 -- Count members in a group (for enforcing max 5)
 local function CountGroupMembers(groupIdx)
-    local group = KS.groups[groupIdx]
+    local group = ResolveGroup(groupIdx)
     if not group then return 0 end
     local count = 0
     if group.tank then count = count + 1 end
     if group.healer then count = count + 1 end
     count = count + #group.dps
     return count
+end
+
+local function CompactDpsArray(groupIdx)
+    local group = ResolveGroup(groupIdx)
+    if not group then return end
+    local compacted = {}
+    for i = 1, math.max(#group.dps, 5) do
+        if group.dps[i] then
+            table.insert(compacted, group.dps[i])
+        end
+    end
+    group.dps = compacted
 end
 
 local function FlashLine(line)
@@ -258,6 +270,10 @@ local function StopDrag(line)
         -- No role redirection — the warning system shows invalid compositions
         SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
         SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
+
+        -- Compact DPS arrays to remove nil holes from swaps
+        if src.groupIdx ~= 0 then CompactDpsArray(src.groupIdx) end
+        if dst.groupIdx ~= 0 then CompactDpsArray(dst.groupIdx) end
 
         -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then

@@ -5,7 +5,6 @@ function KS.CreateAboutView(parent)
 
     local y = -8
     local INDENT = 16
-    local CARD_INSET = 12
 
     ---------------------------------------------------------------------------
     -- Helpers
@@ -149,6 +148,7 @@ function KS.CreateAboutView(parent)
     AddSmallText("3.  DPS distribution depends on the selected mode:", 0.75, 0.75, 0.75, INDENT)
     AddSmallText("|cffffffffSkill Matched|r — Top DPS to Group 1, next best to Group 2, etc.", 0.65, 0.65, 0.65, INDENT + 12)
     AddSmallText("|cffffffffBalanced|r — Snake draft (1→N, N→1) for even score distribution.", 0.65, 0.65, 0.65, INDENT + 12)
+    AddSmallText("|cffffffffGear|r — Sort by item level instead of M+ score (iLvl primary, score tiebreak).", 0.65, 0.65, 0.65, INDENT + 12)
     AddSmallText("4.  A utility pass swaps DPS between groups to cover Battle Rez and Bloodlust gaps.", 0.75, 0.75, 0.75, INDENT)
     AddSmallText("5.  Locked groups are fully excluded from sorting and utility balancing.", 0.75, 0.75, 0.75, INDENT)
     AddSmallText("6.  Extra players (raid not a multiple of 5) go to Unassigned.", 0.75, 0.75, 0.75, INDENT)

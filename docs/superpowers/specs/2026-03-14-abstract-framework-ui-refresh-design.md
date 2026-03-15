@@ -139,12 +139,14 @@ Parameter order matches the current implementation (`label, min, max, step, widt
 - Corner grip texture, hover brightens
 - Consistent with bordered frame styling
 
-### KS.CreateScrollFrame (unchanged logic, visual update)
+### KS.CreateScrollFrame (API unchanged, visual overhaul)
 
-The existing `KS.CreateScrollFrame` keeps its current API and scroll behavior. Visual updates only:
+The existing `KS.CreateScrollFrame` keeps its current API and scroll behavior. The scrollbar visuals are overhauled to match AF's minimal style:
 
-- Scrollbar thumb: hover brightens to cyan accent, matching other interactive elements
-- Scrollbar track: uses bordered frame styling (`0.1, 0.1, 0.1` bg, 1px border)
+- **Track:** 5px wide bordered frame, dark background matching parent, black 1px border. Anchored to right edge of scroll area.
+- **Thumb:** 5px wide bordered frame, cyan accent at 0.7 alpha, black 1px border. Proportional height: `max(trackHeight * (visibleHeight / contentHeight), 20)`. `SetHitRectInsets(-5, -5, 0, 0)` to expand grab area on the narrow thumb.
+- **Hover:** thumb alpha increases to 0.9 on mouse enter, returns to 0.7 on leave.
+- **Visibility:** scrollbar hidden when content doesn't overflow, shown when scrollable. Content area shrinks by scrollbar width (7px) when scrollbar appears.
 - No API changes — all 4 callsites (RosterView, GroupView, About, CharacterDetail) remain unchanged
 
 ## Drag and Drop Visual Upgrade (GroupView)

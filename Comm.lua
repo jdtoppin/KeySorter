@@ -103,12 +103,12 @@ function KS.HandleCommMessage(msg, sender)
         if groupData then
             local names = { strsplit(",", groupData) }
             KS.groups[i] = {
-                tank = byName[names[1]] or (names[1] ~= "" and { name = names[1], classFile = "PRIEST", role = "TANK", score = 0 } or nil),
-                healer = byName[names[2]] or (names[2] ~= "" and { name = names[2], classFile = "PRIEST", role = "HEALER", score = 0 } or nil),
+                tank = byName[names[1]] or (names[1] ~= "" and { name = names[1], classFile = "PRIEST", role = "TANK", score = 0, runs = {}, avgKeyLevel = 0, numRuns = 0, numTimed = 0, numUntimed = 0, ilvl = 0, hasBrez = false, hasLust = false, hasShroud = false, utilityCount = 0, dataSource = "sync" } or nil),
+                healer = byName[names[2]] or (names[2] ~= "" and { name = names[2], classFile = "PRIEST", role = "HEALER", score = 0, runs = {}, avgKeyLevel = 0, numRuns = 0, numTimed = 0, numUntimed = 0, ilvl = 0, hasBrez = false, hasLust = false, hasShroud = false, utilityCount = 0, dataSource = "sync" } or nil),
                 dps = {},
             }
             for j = 3, #names do
-                local member = byName[names[j]] or { name = names[j], classFile = "PRIEST", role = "DAMAGER", score = 0 }
+                local member = byName[names[j]] or { name = names[j], classFile = "PRIEST", role = "DAMAGER", score = 0, runs = {}, avgKeyLevel = 0, numRuns = 0, numTimed = 0, numUntimed = 0, ilvl = 0, hasBrez = false, hasLust = false, hasShroud = false, utilityCount = 0, dataSource = "sync" }
                 table.insert(KS.groups[i].dps, member)
             end
         end
@@ -120,7 +120,7 @@ function KS.HandleCommMessage(msg, sender)
         local unNames = { strsplit(",", unPart:sub(3)) }
         for _, uname in ipairs(unNames) do
             if uname ~= "" then
-                local member = byName[uname] or { name = uname, classFile = "PRIEST", role = "DAMAGER", score = 0 }
+                local member = byName[uname] or { name = uname, classFile = "PRIEST", role = "DAMAGER", score = 0, runs = {}, avgKeyLevel = 0, numRuns = 0, numTimed = 0, numUntimed = 0, ilvl = 0, hasBrez = false, hasLust = false, hasShroud = false, utilityCount = 0, dataSource = "sync" }
                 table.insert(KS.unassigned, member)
             end
         end

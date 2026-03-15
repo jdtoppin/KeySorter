@@ -153,6 +153,10 @@ function KS.CreateMainFrame()
     local glowElapsed = 0
     local glowActive = false
 
+    -- Use a separate child frame for glow animation to avoid OnUpdate conflict
+    -- with the button's AnimateButtonHighlight
+    local glowFrame = CreateFrame("Frame", nil, sortBtnGroups)
+
     function KS.UpdateSortGlow()
         -- Glow when there are unassigned players OR when roster has players but no groups yet
         if #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0) then
@@ -160,7 +164,7 @@ function KS.CreateMainFrame()
                 glowActive = true
                 sortGlow:Show()
                 glowElapsed = 0
-                sortBtnGroups:SetScript("OnUpdate", function(self, dt)
+                glowFrame:SetScript("OnUpdate", function(self, dt)
                     if not glowActive then return end
                     glowElapsed = glowElapsed + dt
                     -- Pulse alpha between 0.1 and 0.4
@@ -172,7 +176,7 @@ function KS.CreateMainFrame()
             if glowActive then
                 glowActive = false
                 sortGlow:Hide()
-                sortBtnGroups:SetScript("OnUpdate", nil)
+                glowFrame:SetScript("OnUpdate", nil)
             end
         end
     end
