@@ -58,40 +58,23 @@ function KS.SortGroups()
     table.sort(healers, sortFunc)
     table.sort(dps, sortFunc)
 
-    -- Step 3: Determine total groups needed based on total player count
-    -- WoW raid subgroups hold 5 — create enough groups for everyone
-    local totalPlayers = lockedCount + unlocked
-    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
-    -- At minimum, enough for locked groups
-    totalGroupsNeeded = math.max(totalGroupsNeeded, #lockedGroups)
-
-    -- Number of complete groups we can form (1T+1H+3D)
+    -- Step 3: Form complete groups only (1T+1H+3D). Extras → unassigned.
     local numCompleteGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
-    -- Total new group slots (complete + incomplete/empty)
-    local numNewSlots = totalGroupsNeeded - #lockedGroups
 
-    -- Build all new groups
     local newGroups = {}
-    for i = 1, numNewSlots do
-        newGroups[i] = { tank = nil, healer = nil, dps = {} }
+    for i = 1, numCompleteGroups do
+        newGroups[i] = { tank = tanks[i], healer = healers[i], dps = {} }
     end
 
-    -- Step 4: Fill complete groups first (1T+1H+3D)
-    for i = 1, math.min(numCompleteGroups, numNewSlots) do
-        newGroups[i].tank = tanks[i]
-        newGroups[i].healer = healers[i]
-    end
-
-    local dpsNeeded = math.min(numCompleteGroups, numNewSlots) * 3
-    local dpsToAssign = math.min(#dps, dpsNeeded)
+    -- DPS distribution
+    local dpsToAssign = math.min(#dps, numCompleteGroups * 3)
 
     if KS.sortMode == "balanced" and numCompleteGroups > 0 then
         local groupIdx = 1
         local direction = 1
-        local maxG = math.min(numCompleteGroups, numNewSlots)
         for i = 1, dpsToAssign do
             table.insert(newGroups[groupIdx].dps, dps[i])
-            if (direction == 1 and groupIdx == maxG) or (direction == -1 and groupIdx == 1) then
+            if (direction == 1 and groupIdx == numCompleteGroups) or (direction == -1 and groupIdx == 1) then
                 direction = direction * -1
             else
                 groupIdx = groupIdx + direction
@@ -100,81 +83,42 @@ function KS.SortGroups()
     else
         for i = 1, dpsToAssign do
             local groupIdx = math.ceil(i / 3)
-            if groupIdx <= numNewSlots then
+            if groupIdx <= numCompleteGroups then
                 table.insert(newGroups[groupIdx].dps, dps[i])
             end
         end
     end
 
-    -- Step 5: Distribute remaining players into remaining group slots (up to 5 each)
-    local extraTanks = {}
-    for i = math.min(numCompleteGroups, numNewSlots) + 1, #tanks do table.insert(extraTanks, tanks[i]) end
-    local extraHealers = {}
-    for i = math.min(numCompleteGroups, numNewSlots) + 1, #healers do table.insert(extraHealers, healers[i]) end
-    local extraDps = {}
-    for i = dpsToAssign + 1, #dps do table.insert(extraDps, dps[i]) end
+    -- Extras → unassigned (raid lead drags them into empty group cards)
+    for i = numCompleteGroups + 1, #tanks do table.insert(KS.unassigned, tanks[i]) end
+    for i = numCompleteGroups + 1, #healers do table.insert(KS.unassigned, healers[i]) end
+    for i = dpsToAssign + 1, #dps do table.insert(KS.unassigned, dps[i]) end
 
-    -- Fill remaining group slots with extras
-    for i = math.min(numCompleteGroups, numNewSlots) + 1, numNewSlots do
-        local count = 0
-        if #extraTanks > 0 and count < 5 then
-            newGroups[i].tank = table.remove(extraTanks, 1)
-            count = count + 1
-        end
-        if #extraHealers > 0 and count < 5 then
-            newGroups[i].healer = table.remove(extraHealers, 1)
-            count = count + 1
-        end
-        while #extraDps > 0 and count < 5 do
-            table.insert(newGroups[i].dps, table.remove(extraDps, 1))
-            count = count + 1
-        end
-    end
-
-    -- Any remaining extras that didn't fit (shouldn't happen with correct math)
-    for _, t in ipairs(extraTanks) do table.insert(KS.unassigned, t) end
-    for _, h in ipairs(extraHealers) do table.insert(KS.unassigned, h) end
-    for _, d in ipairs(extraDps) do table.insert(KS.unassigned, d) end
-
-    -- Merge: locked groups at their original positions, new groups fill the rest
+    -- Merge: locked groups at original positions, new complete groups fill the rest
     wipe(KS.groups)
     wipe(KS.incompleteGroups)
 
-    -- Place locked groups back at their original indices
     for _, lg in ipairs(lockedGroups) do
         KS.groups[lg.index] = lg.group
     end
 
-    -- Separate complete from incomplete new groups
-    local completeNew = {}
-    local incompleteNew = {}
-    for _, g in ipairs(newGroups) do
-        local count = 0
-        if g.tank then count = count + 1 end
-        if g.healer then count = count + 1 end
-        count = count + #g.dps
-        if count == 5 and g.tank and g.healer and #g.dps == 3 then
-            table.insert(completeNew, g)
-        elseif count > 0 then
-            table.insert(incompleteNew, g)
-        end
-        -- Empty groups (count == 0) are dropped
-    end
-
-    -- Fill KS.groups with complete groups
     local newIdx = 1
-    for i = 1, totalGroupsNeeded do
+    for i = 1, #lockedGroups + numCompleteGroups do
         if not KS.groups[i] then
-            if newIdx <= #completeNew then
-                KS.groups[i] = completeNew[newIdx]
+            if newIdx <= numCompleteGroups then
+                KS.groups[i] = newGroups[newIdx]
                 newIdx = newIdx + 1
             end
         end
     end
 
-    -- Store incomplete groups separately (displayed after unassigned)
-    for _, g in ipairs(incompleteNew) do
-        table.insert(KS.incompleteGroups, g)
+    -- Calculate how many empty group cards to show for remaining players
+    -- (enough slots for all unassigned, up to 5 per empty group)
+    if #KS.unassigned > 0 then
+        local emptyGroupsNeeded = math.ceil(#KS.unassigned / 5)
+        for i = 1, emptyGroupsNeeded do
+            table.insert(KS.incompleteGroups, { tank = nil, healer = nil, dps = {} })
+        end
     end
 
     -- Step 5: Utility balancing pass (only on unlocked groups)

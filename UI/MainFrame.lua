@@ -115,10 +115,43 @@ function KS.CreateMainFrame()
             KS.SortGroups()
             if not KS.previewMode then KS.ApplyGroups() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
+            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         end
     end)
     KS.sortButtonGroups = sortBtnGroups
     KS.SetTooltip(sortBtnGroups, "ANCHOR_BOTTOM", {"Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible."})
+
+    -- Pulsing glow on sort button when unassigned players exist
+    local sortGlow = sortBtnGroups:CreateTexture(nil, "BACKGROUND")
+    sortGlow:SetPoint("TOPLEFT", -3, 3)
+    sortGlow:SetPoint("BOTTOMRIGHT", 3, -3)
+    sortGlow:SetColorTexture(0, 0.8, 1, 0)
+    sortGlow:Hide()
+    local glowElapsed = 0
+    local glowActive = false
+
+    function KS.UpdateSortGlow()
+        if #KS.unassigned > 0 then
+            if not glowActive then
+                glowActive = true
+                sortGlow:Show()
+                glowElapsed = 0
+                sortBtnGroups:SetScript("OnUpdate", function(self, dt)
+                    if not glowActive then return end
+                    glowElapsed = glowElapsed + dt
+                    -- Pulse alpha between 0.1 and 0.4
+                    local alpha = 0.25 + 0.15 * math.sin(glowElapsed * 3)
+                    sortGlow:SetVertexColor(0, 0.8, 1, alpha)
+                end)
+            end
+        else
+            if glowActive then
+                glowActive = false
+                sortGlow:Hide()
+                sortBtnGroups:SetScript("OnUpdate", nil)
+            end
+        end
+    end
 
     local switchOptions = {}
     for _, mode in ipairs(KS.SORT_MODES) do

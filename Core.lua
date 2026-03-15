@@ -110,6 +110,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KS.ReconcileGroups()
             if KS.UpdateGroupView then KS.UpdateGroupView() end
         end
+        if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         if KS.mainFrame and KS.mainFrame:IsShown() then
             KS.UpdatePermissionState()
         end

@@ -585,13 +585,14 @@ function KS.UpdateGroupView()
         if uCard then table.insert(groupCards, uCard) end
     end
 
-    -- 3. Incomplete groups (after unassigned)
+    -- 3. Empty/incomplete group cards (after unassigned) — drag targets
     if KS.incompleteGroups then
         local baseIdx = #KS.groups
         for i, group in ipairs(KS.incompleteGroups) do
             local card = CreateGroupCard(scrollChild, baseIdx + i, group, 0, 0)
-            -- Mark as incomplete for visual distinction
-            card:SetBorderColor(0.5, 0.35, 0.15, 1)
+            -- Dim border for empty/incomplete groups
+            card:SetBorderColor(0.3, 0.3, 0.3, 0.5)
+            card:SetBackgroundColor(0.08, 0.08, 0.08, 0.7)
             table.insert(groupCards, card)
         end
     end

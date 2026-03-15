@@ -87,6 +87,7 @@ function KS.CreateSettingsView(parent)
             end
             if KS.UpdateRosterView then KS.UpdateRosterView() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
+            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         end
     end)
     y = y - 48
