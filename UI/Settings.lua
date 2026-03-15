@@ -236,26 +236,59 @@ function KS.CreateSettingsView(parent)
         lbl:SetTextColor(0.7, 0.7, 0.7)
         yStart = yStart - 16
 
-        local box = CreateFrame("EditBox", nil, scrollChild, "BackdropTemplate")
-        box:SetPoint("TOPLEFT", 16, yStart)
-        box:SetSize(300, 28)
-        box:SetBackdrop(KS.BACKDROP)
-        box:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
-        box:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+        -- Container with backdrop (ScrollFrame can't have backdrop directly)
+        local container = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
+        container:SetPoint("TOPLEFT", 16, yStart)
+        container:SetPoint("TOPRIGHT", -16, yStart)
+        container:SetHeight(50)
+        container:SetBackdrop(KS.BACKDROP)
+        container:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+        container:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+
+        -- Scrollframe inside container for multi-line editing
+        local sf = CreateFrame("ScrollFrame", nil, container)
+        sf:SetPoint("TOPLEFT", 6, -4)
+        sf:SetPoint("BOTTOMRIGHT", -6, 4)
+
+        local box = CreateFrame("EditBox", nil, sf)
+        box:SetWidth(280)
         box:SetFontObject("GameFontHighlightSmall")
         box:SetAutoFocus(false)
-        box:SetMultiLine(false)
-        box:SetTextInsets(6, 6, 4, 4)
+        box:SetMultiLine(true)
         box:SetText(KeySorterDB[dbKey] or "")
+        sf:SetScrollChild(box)
+
+        -- Auto-resize container to fit text
+        local function UpdateHeight()
+            local textHeight = box:GetHeight()
+            if textHeight < 1 then textHeight = 50 end
+            local h = math.max(50, math.min(textHeight + 12, 120))
+            container:SetHeight(h)
+        end
+
+        box:SetScript("OnTextChanged", function(self)
+            -- Recalculate height based on text
+            local numLines = select(2, self:GetText():gsub("\n", "\n")) + 1
+            local lineHeight = select(2, self:GetFont()) or 12
+            self:SetHeight(math.max(numLines * (lineHeight + 2), 40))
+            UpdateHeight()
+        end)
         box:SetScript("OnEscapePressed", function(self)
             self:SetText(KeySorterDB[dbKey] or "")
             self:ClearFocus()
-        end)
-        box:SetScript("OnEnterPressed", function(self)
-            self:ClearFocus()
+            UpdateHeight()
         end)
 
-        return box, yStart - 34
+        -- Trigger initial height
+        C_Timer.After(0, function()
+            local text = box:GetText()
+            if text and #text > 0 then
+                box:SetText(text)
+            end
+            UpdateHeight()
+        end)
+
+        return box, yStart - 58
     end
 
     local welcomeBox, yAfterWelcome = CreateMessageEditor("Welcome Message", "welcomeMsg", y)
