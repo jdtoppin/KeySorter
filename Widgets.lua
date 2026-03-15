@@ -1030,9 +1030,12 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
         if btn._checked then
             icon:SetVertexColor(ACCENT_R, ACCENT_G, ACCENT_B, 1)
             btn:SetBackdropBorderColor(ACCENT_R, ACCENT_G, ACCENT_B, 0.8)
+            cbHighlight:Show()
+            cbHighlight:SetHeight(btn:GetHeight() - 2)
         else
             icon:SetVertexColor(0.3, 0.3, 0.3, 0.5)
             btn:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+            cbHighlight:SetHeight(1)
         end
         btn._borderColor = btn._checked
             and { ACCENT_R, ACCENT_G, ACCENT_B, 0.8 }
@@ -1042,6 +1045,13 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
     btn:SetScript("OnClick", function(self)
         self._checked = not self._checked
         UpdateVisual()
+        -- Animate fill on check/uncheck
+        if self._checked then
+            cbHighlight:Show()
+            AnimateCBHighlight(self:GetHeight() - 2, 0.15)
+        else
+            AnimateCBHighlight(1, 0.1)
+        end
         if self._onToggle then self._onToggle(self._checked) end
     end)
 
