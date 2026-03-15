@@ -112,24 +112,27 @@ function KS.CreateSettingsView(parent)
 
     local simBtn = KS.CreateButton(scrollChild, "Start Simulation", "accent", 110, 22)
     simBtn:SetAnimatedHighlight(true)
-    simBtn:SetPoint("LEFT", 16, 0)
-    simBtn:SetPoint("TOP", simDesc, "BOTTOM", 0, -4)
+    simBtn:SetPoint("TOPLEFT", 16, y)
 
-    local simSpeedSlider = KS.CreateSlider(scrollChild, "Join Interval (sec)", 1, 10, 1, 160)
-    simSpeedSlider:SetPoint("TOPLEFT", simBtn, "TOPRIGHT", 16, 4)
-    simSpeedSlider:SetValue(KS.simSpeed or 3)
-    simSpeedSlider:SetOnChange(function(val)
-        KS.simSpeed = val
-    end)
-    KS.simSpeed = KS.simSpeed or 3
+    simStatus:SetPoint("LEFT", simBtn, "RIGHT", 12, 0)
+    y = y - 30
 
-    local simTargetSlider = KS.CreateSlider(scrollChild, "Target Players", 5, 40, 1, 160)
-    simTargetSlider:SetPoint("TOPLEFT", simSpeedSlider, "BOTTOMLEFT", 0, -6)
+    local simTargetSlider = KS.CreateSlider(scrollChild, "Target Players", 5, 40, 1, 200)
+    simTargetSlider:SetPoint("TOPLEFT", 16, y)
     simTargetSlider:SetValue(KS.simTarget or 25)
     simTargetSlider:SetOnChange(function(val)
         KS.simTarget = val
     end)
     KS.simTarget = KS.simTarget or 25
+    y = y - 48
+
+    local simSpeedSlider = KS.CreateSlider(scrollChild, "Join Interval (sec)", 1, 10, 1, 200)
+    simSpeedSlider:SetPoint("TOPLEFT", 16, y)
+    simSpeedSlider:SetValue(KS.simSpeed or 3)
+    simSpeedSlider:SetOnChange(function(val)
+        KS.simSpeed = val
+    end)
+    KS.simSpeed = KS.simSpeed or 3
 
     local simTimer = nil
     local simCount = 0
@@ -203,7 +206,7 @@ function KS.CreateSettingsView(parent)
         end
     end)
 
-    y = y - 100
+    y = y - 48
 
     ---------------------------------------------------------------------------
     -- General
