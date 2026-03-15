@@ -3,7 +3,7 @@ local addonName, KS = ...
 function KS.CreateSettingsView(parent)
     local scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterSettingsScroll")
 
-    local y = -12
+    local y = -8
 
     local function AddSettingLabel(text, r, g, b, font)
         local fs = scrollChild:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")

@@ -112,8 +112,8 @@ function KS.CreateMainFrame()
 
     -- Settings content
     local settingsContent = CreateFrame("Frame", nil, contentArea)
-    settingsContent:SetPoint("TOPLEFT", 0, -4)
-    settingsContent:SetPoint("BOTTOMRIGHT", 0, 0)
+    settingsContent:SetPoint("TOPLEFT", 8, -4)
+    settingsContent:SetPoint("BOTTOMRIGHT", -8, 8)
     settingsContent:Hide()
     tabContents["settings"] = settingsContent
 
