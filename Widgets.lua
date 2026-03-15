@@ -181,23 +181,23 @@ function KS.CreateButton(parent, text, colorName, width, height)
         if self._unhighlightText then self._unhighlightText() end
     end)
 
-    -- Push effect + click flash
+    -- Push effect + click fill animation
     btn:SetScript("OnMouseDown", function(self)
         if self._disabled then return end
         self._label:SetPoint("CENTER", 0, -1)
         if self._tex then self._tex:SetPoint("CENTER", 0, -1) end
-        -- Snap fill to full on press
+        -- Animate fill from bottom to top on click
         if self._animHighlight and self._animTex then
             self._animTex:Show()
-            self._animTex:SetHeight(self:GetHeight() - 2)
+            AnimateButtonHighlight(self, self:GetHeight() - 2, 0.15)
         end
     end)
     btn:SetScript("OnMouseUp", function(self)
         self._label:SetPoint("CENTER", 0, 0)
         if self._tex then self._tex:SetPoint("CENTER", 0, 0) end
-        -- Animate fill back down after click
+        -- Animate fill back down
         if self._animHighlight and self._animTex then
-            AnimateButtonHighlight(self, self:IsMouseOver() and (self:GetHeight() - 2) or 1, 0.15)
+            AnimateButtonHighlight(self, 1, 0.1)
         end
     end)
 
@@ -621,12 +621,12 @@ function KS.CreateDropdown(parent, width)
         label:SetPoint("LEFT", 6, -1)
         arrow:SetPoint("RIGHT", -6, -1)
         ddHighlight:Show()
-        AnimateDDHighlight(self:GetHeight() - 2, 0.1)
+        AnimateDDHighlight(self:GetHeight() - 2, 0.15)
     end)
     dd:SetScript("OnMouseUp", function(self)
         label:SetPoint("LEFT", 6, 0)
         arrow:SetPoint("RIGHT", -6, 0)
-        AnimateDDHighlight(1, 0.15)
+        AnimateDDHighlight(1, 0.1)
     end)
 
     local function BuildList()
