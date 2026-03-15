@@ -353,20 +353,28 @@ function KS.GeneratePreviewData()
     local numPlayers = KS.previewPlayerCount or 25
     local numDungeons = #KS.DUNGEON_IDS
 
+    -- Realistic role distribution (stable per player index):
+    -- ~15% tanks, ~15% healers, ~70% DPS with some variance.
+    -- Uses deterministic seed so roles don't change when count changes.
+    local ROLE_PATTERN = {
+        "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",     -- 1-5: perfect group
+        "HEALER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",  -- 6-10: short a tank
+        "TANK", "DAMAGER", "DAMAGER", "HEALER", "DAMAGER",     -- 11-15: mixed
+        "DAMAGER", "DAMAGER", "TANK", "HEALER", "DAMAGER",     -- 16-20: late tank
+        "DAMAGER", "TANK", "DAMAGER", "DAMAGER", "HEALER",     -- 21-25: scattered
+        "DAMAGER", "DAMAGER", "DAMAGER", "TANK", "HEALER",     -- 26-30: DPS heavy
+        "DAMAGER", "HEALER", "TANK", "DAMAGER", "DAMAGER",     -- 31-35: extra healer
+        "DAMAGER", "DAMAGER", "DAMAGER", "TANK", "DAMAGER",    -- 36-40: short healer
+    }
+
     for i = 1, numPlayers do
-        -- Role assignment is stable per player index (modulo 5):
-        -- every 5th player starting at 1 is a tank, at 2 is a healer, rest are DPS
-        -- This ensures roles don't change when player count increases
-        local role, classPool
-        local slot = ((i - 1) % 5)
-        if slot == 0 then
-            role = "TANK"
+        local role = ROLE_PATTERN[i] or "DAMAGER"
+        local classPool
+        if role == "TANK" then
             classPool = PREVIEW_TANK_CLASSES
-        elseif slot == 1 then
-            role = "HEALER"
+        elseif role == "HEALER" then
             classPool = PREVIEW_HEALER_CLASSES
         else
-            role = "DAMAGER"
             classPool = PREVIEW_DPS_CLASSES
         end
 
