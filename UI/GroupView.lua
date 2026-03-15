@@ -541,7 +541,7 @@ end
 local function CreateUnassignedCard(parent)
     -- Always show unassigned card (even when empty — can receive drops)
     local numMembers = #KS.unassigned
-    local numSlots = math.max(numMembers + 1, 3) -- at least 3 slots, plus one empty drop target
+    local numSlots = numMembers + 1 -- one extra empty slot for drop target
     local height = 24 + numSlots * MEMBER_HEIGHT + 8
     local card = KS.CreateBorderedFrame(parent, CARD_WIDTH, height,
         {0.15, 0.1, 0.05, 0.95}, {0.5, 0.35, 0.15, 1})
