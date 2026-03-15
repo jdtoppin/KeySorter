@@ -195,13 +195,10 @@ function KS.CreateButton(parent, text, colorName, width, height)
     function btn:SetOnClick(fn)
         self:SetScript("OnClick", function(self, ...)
             if self._disabled then return end
-            -- Click fill animation: grow up, hold, shrink back
+            -- Click fill animation: grow up and stay
             if self._animHighlight and self._animTex then
                 self._animTex:Show()
                 AnimateButtonHighlight(self, self:GetHeight() - 2, 0.15)
-                C_Timer.After(0.3, function()
-                    AnimateButtonHighlight(self, 1, 0.15)
-                end)
             end
             fn(self, ...)
         end)
@@ -695,12 +692,9 @@ function KS.CreateDropdown(parent, width)
                 dd._selectedValue = item.value
                 label:SetText(item.text)
                 list:Hide()
-                -- Selection animation on the dropdown trigger
+                -- Selection animation on the dropdown trigger: fill up and stay
                 ddHighlight:Show()
                 AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
-                C_Timer.After(0.3, function()
-                    AnimateDDHighlight(1, 0.15)
-                end)
                 if dd._onSelect then dd._onSelect(item.value, item.text, i) end
             end)
             mb:Show()
