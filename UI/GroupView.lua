@@ -172,7 +172,15 @@ end
 
 local function SetMemberInSlot(groupIdx, slot, slotIdx, member)
     if groupIdx == 0 then
-        KS.unassigned[slotIdx] = member
+        if member then
+            if slotIdx <= #KS.unassigned then
+                KS.unassigned[slotIdx] = member
+            else
+                table.insert(KS.unassigned, member)
+            end
+        else
+            KS.unassigned[slotIdx] = nil
+        end
         return
     end
     local group = ResolveGroup(groupIdx)
@@ -495,21 +503,27 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
 end
 
 local function CreateUnassignedCard(parent)
-    if #KS.unassigned == 0 then return nil end
-
-    local height = 24 + #KS.unassigned * MEMBER_HEIGHT + 8
+    -- Always show unassigned card (even when empty — can receive drops)
+    local numMembers = #KS.unassigned
+    local numSlots = math.max(numMembers + 1, 3) -- at least 3 slots, plus one empty drop target
+    local height = 24 + numSlots * MEMBER_HEIGHT + 8
     local card = KS.CreateBorderedFrame(parent, CARD_WIDTH, height,
         {0.15, 0.1, 0.05, 0.95}, {0.5, 0.35, 0.15, 1})
 
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     header:SetPoint("TOPLEFT", 8, -6)
-    header:SetText(format("Unassigned (%d)", #KS.unassigned))
+    header:SetText(format("Unassigned (%d)", numMembers))
     header:SetTextColor(1, 0.6, 0)
 
     local y = -24
+    -- Existing unassigned members
     for idx, member in ipairs(KS.unassigned) do
-        -- groupIdx=0 marks unassigned, slotIdx is the index in KS.unassigned
         CreateMemberLine(card, y, member.role, member, 0, "unassigned", idx)
+        y = y - MEMBER_HEIGHT
+    end
+    -- Empty drop slots (so you can drag group members back to unassigned)
+    for idx = numMembers + 1, numSlots do
+        CreateMemberLine(card, y, "DAMAGER", nil, 0, "unassigned", idx)
         y = y - MEMBER_HEIGHT
     end
 
@@ -610,11 +624,9 @@ function KS.UpdateGroupView()
         table.insert(groupCards, card)
     end
 
-    -- 2. Unassigned card (if any)
-    if #KS.unassigned > 0 then
-        local uCard = CreateUnassignedCard(scrollChild)
-        if uCard then table.insert(groupCards, uCard) end
-    end
+    -- 2. Unassigned card (always shown — can receive drops)
+    local uCard = CreateUnassignedCard(scrollChild)
+    if uCard then table.insert(groupCards, uCard) end
 
     -- 3. Empty/incomplete group cards (after unassigned) — drag targets
     if KS.incompleteGroups then

@@ -112,13 +112,14 @@ function KS.SortGroups()
         end
     end
 
-    -- Calculate how many empty group cards to show for remaining players
-    -- (enough slots for all unassigned, up to 5 per empty group)
-    if #KS.unassigned > 0 then
-        local emptyGroupsNeeded = math.ceil(#KS.unassigned / 5)
-        for i = 1, emptyGroupsNeeded do
-            table.insert(KS.incompleteGroups, { tank = nil, healer = nil, dps = {} })
-        end
+    -- Create empty group cards based on total raid size
+    -- Total groups needed = ceil(totalPlayers / 5)
+    local totalPlayers = #KS.roster
+    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
+    local filledGroups = #KS.groups
+    local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - filledGroups)
+    for i = 1, emptyGroupsNeeded do
+        table.insert(KS.incompleteGroups, { tank = nil, healer = nil, dps = {} })
     end
 
     -- Step 5: Utility balancing pass (only on unlocked groups)
