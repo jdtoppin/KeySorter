@@ -314,31 +314,11 @@ end
 function KS.CreateResizeButton(parent)
     local btn = CreateFrame("Button", nil, parent)
     btn:SetSize(16, 16)
-    btn:SetPoint("BOTTOMRIGHT", -1, 1)
-    btn:SetFrameLevel(parent:GetFrameLevel() + 15) -- above scrollbar
-
-    -- Grip dots
-    local grip = btn:CreateTexture(nil, "OVERLAY")
-    grip:SetSize(10, 10)
-    grip:SetPoint("BOTTOMRIGHT", -2, 2)
-    grip:SetColorTexture(0.3, 0.3, 0.3, 0.8)
-    btn._grip = grip
-
-    btn:SetScript("OnEnter", function(self)
-        self._grip:SetColorTexture(ACCENT_R, ACCENT_G, ACCENT_B, 0.9)
-    end)
-    btn:SetScript("OnLeave", function(self)
-        self._grip:SetColorTexture(0.3, 0.3, 0.3, 0.8)
-    end)
-
-    -- Push effect
-    btn:SetScript("OnMouseDown", function(self)
-        self._grip:SetPoint("BOTTOMRIGHT", -1, 0)
-    end)
-    btn:SetScript("OnMouseUp", function(self)
-        self._grip:SetPoint("BOTTOMRIGHT", -1, 1)
-    end)
-
+    btn:SetPoint("BOTTOMRIGHT", -2, 2)
+    btn:SetFrameLevel(parent:GetFrameLevel() + 15)
+    btn:SetNormalTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Up")
+    btn:SetHighlightTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Highlight")
+    btn:SetPushedTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Down")
     return btn
 end
 
