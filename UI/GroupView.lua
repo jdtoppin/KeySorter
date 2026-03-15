@@ -145,12 +145,24 @@ local function FindDropTarget()
     return nil
 end
 
+local function ResolveGroup(groupIdx)
+    if groupIdx == 0 then return nil end  -- unassigned
+    if groupIdx <= #KS.groups then
+        return KS.groups[groupIdx]
+    end
+    -- Incomplete groups are offset by #KS.groups
+    local incIdx = groupIdx - #KS.groups
+    if KS.incompleteGroups and KS.incompleteGroups[incIdx] then
+        return KS.incompleteGroups[incIdx]
+    end
+    return nil
+end
+
 local function GetMemberFromSlot(groupIdx, slot, slotIdx)
     if groupIdx == 0 then
-        -- Unassigned pool
         return KS.unassigned[slotIdx]
     end
-    local group = KS.groups[groupIdx]
+    local group = ResolveGroup(groupIdx)
     if not group then return nil end
     if slot == "tank" then return group.tank
     elseif slot == "healer" then return group.healer
@@ -160,11 +172,10 @@ end
 
 local function SetMemberInSlot(groupIdx, slot, slotIdx, member)
     if groupIdx == 0 then
-        -- Unassigned pool
         KS.unassigned[slotIdx] = member
         return
     end
-    local group = KS.groups[groupIdx]
+    local group = ResolveGroup(groupIdx)
     if not group then return end
     if slot == "tank" then group.tank = member
     elseif slot == "healer" then group.healer = member
@@ -561,16 +572,28 @@ function KS.UpdateGroupView()
         return
     end
 
-    -- Create cards (no positioning yet)
+    -- Create cards in display order:
+    -- 1. Complete groups (from KS.groups)
     for i, group in ipairs(KS.groups) do
         local card = CreateGroupCard(scrollChild, i, group, 0, 0)
         table.insert(groupCards, card)
     end
 
-    -- Add unassigned as another card in the grid
+    -- 2. Unassigned card (if any)
     if #KS.unassigned > 0 then
         local uCard = CreateUnassignedCard(scrollChild)
         if uCard then table.insert(groupCards, uCard) end
+    end
+
+    -- 3. Incomplete groups (after unassigned)
+    if KS.incompleteGroups then
+        local baseIdx = #KS.groups
+        for i, group in ipairs(KS.incompleteGroups) do
+            local card = CreateGroupCard(scrollChild, baseIdx + i, group, 0, 0)
+            -- Mark as incomplete for visual distinction
+            card:SetBorderColor(0.5, 0.35, 0.15, 1)
+            table.insert(groupCards, card)
+        end
     end
 
     -- Layout cards responsively, then set up resize hook

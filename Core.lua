@@ -2,6 +2,7 @@ local addonName, KS = ...
 
 KS.roster = {}
 KS.groups = {}
+KS.incompleteGroups = {}
 KS.unassigned = {}
 KS.previewMode = false
 KS.previewPlayerCount = 25
@@ -319,6 +320,7 @@ function KS.TogglePreview()
     else
         wipe(KS.roster)
         wipe(KS.groups)
+        wipe(KS.incompleteGroups)
         wipe(KS.unassigned)
         -- Re-scan real roster if in a group
         if GetNumGroupMembers() > 0 then

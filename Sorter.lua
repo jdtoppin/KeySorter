@@ -136,25 +136,29 @@ function KS.SortGroups()
         table.insert(incompleteGroups, group)
     end
 
-    -- Merge: locked groups first (preserve their positions), then complete, then incomplete
+    -- Merge: locked groups + complete groups into KS.groups
+    -- Incomplete groups stored separately for display after unassigned
     wipe(KS.groups)
+    wipe(KS.incompleteGroups)
+
     -- Place locked groups back at their original indices
     for _, lg in ipairs(lockedGroups) do
         KS.groups[lg.index] = lg.group
     end
-    -- Fill remaining slots with new complete groups, then incomplete groups
-    local allNewGroups = {}
-    for _, g in ipairs(newGroups) do table.insert(allNewGroups, g) end
-    for _, g in ipairs(incompleteGroups) do table.insert(allNewGroups, g) end
-
+    -- Fill remaining slots with complete groups only
     local newIdx = 1
-    for i = 1, #lockedGroups + #allNewGroups do
+    for i = 1, #lockedGroups + numNewGroups do
         if not KS.groups[i] then
-            if newIdx <= #allNewGroups then
-                KS.groups[i] = allNewGroups[newIdx]
+            if newIdx <= numNewGroups then
+                KS.groups[i] = newGroups[newIdx]
                 newIdx = newIdx + 1
             end
         end
+    end
+
+    -- Store incomplete groups separately
+    for _, g in ipairs(incompleteGroups) do
+        table.insert(KS.incompleteGroups, g)
     end
 
     -- Step 5: Utility balancing pass (only on unlocked groups)
