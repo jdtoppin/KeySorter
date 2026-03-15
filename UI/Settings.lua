@@ -93,6 +93,119 @@ function KS.CreateSettingsView(parent)
     y = y - 48
 
     ---------------------------------------------------------------------------
+    -- Live Simulation
+    ---------------------------------------------------------------------------
+    AddSettingLabel("Live Simulation", 0, 0.8, 1, "GameFontNormal")
+
+    local simDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    simDesc:SetPoint("TOPLEFT", 16, y)
+    simDesc:SetPoint("TOPRIGHT", -16, y)
+    simDesc:SetJustifyH("LEFT")
+    simDesc:SetText("Simulate players gradually joining a raid. Shows how groups form in real time.")
+    simDesc:SetTextColor(0.6, 0.6, 0.6)
+    y = y - 20
+
+    local simStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    simStatus:SetPoint("TOPLEFT", 16, y)
+    simStatus:SetText("")
+    simStatus:SetTextColor(0.7, 0.7, 0.7)
+
+    local simBtn = KS.CreateButton(scrollChild, "Start Simulation", "accent", 110, 22)
+    simBtn:SetAnimatedHighlight(true)
+    simBtn:SetPoint("LEFT", 16, 0)
+    simBtn:SetPoint("TOP", simDesc, "BOTTOM", 0, -4)
+
+    local simSpeedSlider = KS.CreateSlider(scrollChild, "Join Interval (sec)", 1, 10, 1, 160)
+    simSpeedSlider:SetPoint("TOPLEFT", simBtn, "TOPRIGHT", 16, 4)
+    simSpeedSlider:SetValue(KS.simSpeed or 3)
+    simSpeedSlider:SetOnChange(function(val)
+        KS.simSpeed = val
+    end)
+    KS.simSpeed = KS.simSpeed or 3
+
+    local simTargetSlider = KS.CreateSlider(scrollChild, "Target Players", 5, 40, 1, 160)
+    simTargetSlider:SetPoint("TOPLEFT", simSpeedSlider, "BOTTOMLEFT", 0, -6)
+    simTargetSlider:SetValue(KS.simTarget or 25)
+    simTargetSlider:SetOnChange(function(val)
+        KS.simTarget = val
+    end)
+    KS.simTarget = KS.simTarget or 25
+
+    local simTimer = nil
+    local simCount = 0
+
+    local function StopSimulation()
+        if simTimer then
+            simTimer:Cancel()
+            simTimer = nil
+        end
+        simBtn:SetText("Start Simulation")
+        simStatus:SetText(format("|cff888888Stopped at %d players|r", simCount))
+    end
+
+    local function SimulationTick()
+        if simCount >= (KS.simTarget or 25) then
+            StopSimulation()
+            simStatus:SetText(format("|cff00ff00Simulation complete — %d players|r", simCount))
+            return
+        end
+
+        -- Add 1-2 players per tick
+        local toAdd = (math.random() > 0.6) and 2 or 1
+        simCount = math.min(simCount + toAdd, KS.simTarget or 25)
+        KS.previewPlayerCount = simCount
+        KS.GeneratePreviewData()
+
+        if #KS.groups > 0 then
+            KS.ReconcileGroups()
+        end
+
+        if KS.UpdateRosterView then KS.UpdateRosterView() end
+        if KS.UpdateGroupView then KS.UpdateGroupView() end
+        if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+
+        simStatus:SetText(format("|cff00ccff%d / %d players joined|r", simCount, KS.simTarget or 25))
+
+        -- Update the player count slider to match
+        countSlider:SetValue(simCount)
+    end
+
+    local function StartSimulation()
+        -- Enable preview mode if not already
+        if not KS.previewMode then
+            KS.TogglePreview()
+            previewStatus:SetText("|cff00ff00ON|r")
+            toggleBtn:SetText("Disable")
+        end
+
+        -- Reset
+        simCount = 0
+        KS.previewPlayerCount = 0
+        wipe(KS.roster)
+        wipe(KS.groups)
+        wipe(KS.incompleteGroups)
+        wipe(KS.unassigned)
+        if KS.UpdateRosterView then KS.UpdateRosterView() end
+        if KS.UpdateGroupView then KS.UpdateGroupView() end
+
+        simBtn:SetText("Stop")
+        simStatus:SetText("|cff00ccffSimulation starting...|r")
+
+        -- Start ticking
+        simTimer = C_Timer.NewTicker(KS.simSpeed or 3, SimulationTick)
+    end
+
+    simBtn:SetOnClick(function()
+        if simTimer then
+            StopSimulation()
+        else
+            StartSimulation()
+        end
+    end)
+
+    y = y - 100
+
+    ---------------------------------------------------------------------------
     -- General
     ---------------------------------------------------------------------------
     AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
