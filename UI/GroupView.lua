@@ -273,20 +273,20 @@ local function StopDrag(line)
         end
 
         -- For drops into groups (not unassigned), redirect to role-appropriate slot
+        local swapHandled = false
         if dst.groupIdx ~= 0 and src.member then
             local dstGroup = ResolveGroup(dst.groupIdx)
             if dstGroup then
-                -- If target slot is empty, redirect source member to correct role slot
                 if not dst.member then
+                    -- Empty slot: redirect to correct role slot
                     local newSlot, newSlotIdx = FindRoleSlot(dstGroup, src.member, dst.groupIdx)
                     if newSlot then
                         dst.slot = newSlot
                         dst.slotIdx = newSlotIdx
                     end
                 else
-                    -- Swap: after removing dst.member, place src.member in correct role slot
-                    -- First clear the dst slot, find the right slot for src, then place dst.member back at src
-                    -- We simulate by: remove dst, find slot for src, place src, then handle dst
+                    -- Swap: place each member in the correct role slot
+                    swapHandled = true
                     local srcMember = src.member
                     local dstMember = dst.member
 
@@ -314,18 +314,15 @@ local function StopDrag(line)
                         end
                         SetMemberInSlot(src.groupIdx, dstNewSlot, dstNewSlotIdx, dstMember)
                     end
-
-                    -- Skip the normal swap below
-                    goto swapDone
                 end
             end
         end
 
-        -- Move/swap the members (simple case: empty target or unassigned)
-        SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
-        SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
-
-        ::swapDone::
+        -- Simple move/swap (empty target or unassigned, or no role redirect needed)
+        if not swapHandled then
+            SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
+            SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
+        end
 
         -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then
