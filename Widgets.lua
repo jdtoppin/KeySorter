@@ -695,6 +695,12 @@ function KS.CreateDropdown(parent, width)
                 dd._selectedValue = item.value
                 label:SetText(item.text)
                 list:Hide()
+                -- Selection animation on the dropdown trigger
+                ddHighlight:Show()
+                AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
+                C_Timer.After(0.3, function()
+                    AnimateDDHighlight(1, 0.15)
+                end)
                 if dd._onSelect then dd._onSelect(item.value, item.text, i) end
             end)
             mb:Show()
@@ -702,13 +708,6 @@ function KS.CreateDropdown(parent, width)
     end
 
     dd:SetScript("OnClick", function()
-        -- Click fill animation: grow up, hold, shrink back
-        ddHighlight:Show()
-        AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
-        C_Timer.After(0.3, function()
-            AnimateDDHighlight(1, 0.15)
-        end)
-
         local list = GetOrCreateDropdownList()
         if list:IsShown() and list._currentOwner == dd then
             list:Hide()
