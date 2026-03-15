@@ -1,53 +1,12 @@
 local addonName, KS = ...
 
-local settingsFrame
+function KS.CreateSettingsView(parent)
+    local scrollFrame, scrollChild = KS.CreateScrollFrame(parent, "KeySorterSettingsScroll")
 
-function KS.ToggleSettings()
-    if not settingsFrame then
-        KS.CreateSettingsFrame()
-    end
-    if settingsFrame:IsShown() then
-        settingsFrame:Hide()
-    else
-        settingsFrame:Show()
-    end
-end
+    local y = -12
 
-function KS.CreateSettingsFrame()
-    settingsFrame = CreateFrame("Frame", "KeySorterSettingsFrame", UIParent, "BackdropTemplate")
-    settingsFrame:SetSize(360, 480)
-    settingsFrame:SetFrameStrata("DIALOG")
-    settingsFrame:SetMovable(true)
-    settingsFrame:EnableMouse(true)
-    settingsFrame:SetClampedToScreen(true)
-    settingsFrame:SetPoint("CENTER")
-
-    settingsFrame:SetBackdrop(KS.BACKDROP_PANEL)
-    settingsFrame:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
-    settingsFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    settingsFrame:RegisterForDrag("LeftButton")
-    settingsFrame:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    settingsFrame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-
-    -- Close
-    local close = KS.CreateButton(settingsFrame, "X", "red", 20, 20)
-    close:SetPoint("TOPRIGHT", -4, -4)
-    close:SetOnClick(function() settingsFrame:Hide() end)
-
-    -- Title
-    local title = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 16, -12)
-    title:SetText("Settings")
-    title:SetTextColor(0, 0.8, 1)
-
-    local y = -44
-
-    ---------------------------------------------------------------------------
-    -- Coming soon placeholder items
-    ---------------------------------------------------------------------------
     local function AddSettingLabel(text, r, g, b, font)
-        local fs = settingsFrame:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
+        local fs = scrollChild:CreateFontString(nil, "OVERLAY", font or "GameFontHighlight")
         fs:SetPoint("TOPLEFT", 16, y)
         fs:SetPoint("TOPRIGHT", -16, y)
         fs:SetJustifyH("LEFT")
@@ -58,7 +17,7 @@ function KS.CreateSettingsFrame()
     end
 
     local function AddSettingRow(label, status)
-        local row = CreateFrame("Frame", nil, settingsFrame)
+        local row = CreateFrame("Frame", nil, scrollChild)
         row:SetPoint("TOPLEFT", 16, y)
         row:SetPoint("TOPRIGHT", -16, y)
         row:SetHeight(24)
@@ -77,12 +36,19 @@ function KS.CreateSettingsFrame()
         return row
     end
 
+    -- Title
+    local title = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, y)
+    title:SetText("Settings")
+    title:SetTextColor(0, 0.8, 1)
+    y = y - 28
+
     ---------------------------------------------------------------------------
     -- Preview Mode
     ---------------------------------------------------------------------------
     AddSettingLabel("Preview Mode", 0, 0.8, 1, "GameFontNormal")
 
-    local previewDesc = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local previewDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     previewDesc:SetPoint("TOPLEFT", 16, y)
     previewDesc:SetPoint("TOPRIGHT", -16, y)
     previewDesc:SetJustifyH("LEFT")
@@ -90,11 +56,12 @@ function KS.CreateSettingsFrame()
     previewDesc:SetTextColor(0.6, 0.6, 0.6)
     y = y - 20
 
-    local previewStatus = settingsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local previewStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     previewStatus:SetPoint("TOPLEFT", 16, y)
     previewStatus:SetText(KS.previewMode and "|cff00ff00ON|r" or "|cffff0000OFF|r")
 
-    local toggleBtn = KS.CreateButton(settingsFrame, KS.previewMode and "Disable" or "Enable", "accent", 70, 22)
+    local toggleBtn = KS.CreateButton(scrollChild, KS.previewMode and "Disable" or "Enable", "accent", 70, 22)
+    toggleBtn:SetAnimatedHighlight(true)
     toggleBtn:SetPoint("LEFT", previewStatus, "RIGHT", 12, 0)
     toggleBtn:SetOnClick(function()
         KS.TogglePreview()
@@ -108,14 +75,16 @@ function KS.CreateSettingsFrame()
     end)
     y = y - 30
 
-    -- Player count slider
-    local countSlider = KS.CreateSlider(settingsFrame, "Player Count", 1, 40, 1, 200)
+    local countSlider = KS.CreateSlider(scrollChild, "Player Count", 1, 40, 1, 200)
     countSlider:SetPoint("TOPLEFT", 16, y)
     countSlider:SetValue(KS.previewPlayerCount or 25)
     countSlider:SetOnChange(function(val)
         KS.previewPlayerCount = val
         if KS.previewMode then
             KS.GeneratePreviewData()
+            if #KS.groups > 0 then
+                KS.ReconcileGroups()
+            end
             if KS.UpdateRosterView then KS.UpdateRosterView() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
         end
@@ -126,6 +95,18 @@ function KS.CreateSettingsFrame()
     -- General
     ---------------------------------------------------------------------------
     AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
+
+    local scaleSlider = KS.CreateSlider(scrollChild, "UI Scale", 0.5, 2.0, 0.1, 200)
+    scaleSlider:SetPoint("TOPLEFT", 16, y)
+    scaleSlider:SetValue(KeySorterDB.uiScale or 1.0)
+    scaleSlider:SetOnChange(function(val)
+        KeySorterDB.uiScale = val
+        if KS.mainFrame then
+            KS.mainFrame:SetScale(val)
+        end
+    end)
+    y = y - 48
+
     AddSettingRow("Season Dungeon Pool", "|cff666666Coming Soon|r")
     AddSettingRow("Font", "|cff666666Coming Soon|r")
     AddSettingRow("Font Size", "|cff666666Coming Soon|r")
@@ -140,6 +121,5 @@ function KS.CreateSettingsFrame()
     AddSettingRow("Swap Threshold", "|cff666666Coming Soon|r")
     AddSettingRow("Group Size", "|cff666666Coming Soon|r")
 
-    table.insert(UISpecialFrames, "KeySorterSettingsFrame")
-    settingsFrame:Hide()
+    scrollChild:SetHeight(math.abs(y) + 16)
 end

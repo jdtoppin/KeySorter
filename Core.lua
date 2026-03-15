@@ -96,6 +96,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.filterIdx = KeySorterDB.filterIdx or 1
             KeySorterDB.minimapPos = KeySorterDB.minimapPos or 225
             KeySorterDB.ilvlCache = KeySorterDB.ilvlCache or {}
+            KeySorterDB.uiScale = KeySorterDB.uiScale or 1.0
+            KeySorterDB.sidebarCollapsed = KeySorterDB.sidebarCollapsed or false
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
@@ -103,6 +105,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
         KS.ScanRoster()
+        -- Reconcile: remove leavers, add joiners to unassigned
+        if #KS.groups > 0 then
+            KS.ReconcileGroups()
+            if KS.UpdateGroupView then KS.UpdateGroupView() end
+        end
         if KS.mainFrame and KS.mainFrame:IsShown() then
             KS.UpdatePermissionState()
         end
@@ -136,9 +143,9 @@ end
 local function ToggleUI()
     EnsureMainFrame()
     if KS.mainFrame:IsShown() then
-        KS.mainFrame:Hide()
+        KS.mainFrame:FadeOut()
     else
-        KS.mainFrame:Show()
+        KS.mainFrame:FadeIn()
         KS.UpdatePermissionState()
     end
 end
@@ -167,7 +174,7 @@ SlashCmdList["KEYSORTER"] = function(msg)
         if #KS.roster == 0 then KS.ScanRoster() end
         KS.SortGroups()
         EnsureMainFrame()
-        KS.mainFrame:Show()
+        KS.mainFrame:FadeIn()
         KS.UpdatePermissionState()
     elseif cmd == "apply" then
         KS.ApplyGroups()
@@ -185,12 +192,14 @@ SlashCmdList["KEYSORTER"] = function(msg)
         end
     elseif cmd == "sync" then
         KS.SendSync()
-    elseif cmd == "preview" or cmd == "test" then
+    elseif cmd == "preview" or cmd == "test" or cmd == "settings" then
         EnsureMainFrame()
-        KS.ToggleSettings()
+        KS.mainFrame:FadeIn()
+        KS.SetTab("settings")
     elseif cmd == "about" or cmd == "credits" then
         EnsureMainFrame()
-        KS.ToggleAbout()
+        KS.mainFrame:FadeIn()
+        KS.SetTab("about")
     elseif cmd == "help" then
         PrintHelp()
     else
@@ -243,20 +252,31 @@ function KS.TogglePreview()
     if KS.UpdateRosterView then KS.UpdateRosterView() end
     if KS.UpdateGroupView then KS.UpdateGroupView() end
 
-    KS.mainFrame:Show()
+    if not KS.mainFrame:IsShown() then
+        KS.mainFrame:FadeIn()
+    end
     KS.UpdatePermissionState()
 end
 
+-- Raider.IO base score per key level (timed exactly on time)
+-- Source: https://support.raider.io/kb/frequently-asked-questions/what-is-the-base-score-value-for-each-level-keystone
+local KEY_BASE_SCORE = {
+    [2]=155, [3]=170, [4]=200, [5]=215, [6]=230, [7]=260, [8]=275, [9]=290,
+    [10]=320, [11]=335, [12]=365, [13]=380, [14]=395, [15]=410, [16]=425,
+    [17]=440, [18]=455, [19]=470, [20]=485, [21]=500, [22]=515, [23]=530,
+    [24]=545, [25]=560,
+}
+
 function KS.GeneratePreviewData()
     wipe(KS.roster)
-    wipe(KS.groups)
-    wipe(KS.unassigned)
+    -- Don't wipe groups/unassigned here — ReconcileGroups handles
+    -- adding new members and removing departed ones
 
     local numPlayers = KS.previewPlayerCount or 25
-    -- Role distribution: ~1 tank per 5, ~1 healer per 5, rest DPS
     local numGroups = math.floor(numPlayers / 5)
     local numTanks = math.max(numGroups, 1)
     local numHealers = math.max(numGroups, 1)
+    local numDungeons = #KS.DUNGEON_IDS
 
     for i = 1, numPlayers do
         local role, classPool
@@ -272,50 +292,87 @@ function KS.GeneratePreviewData()
         end
 
         local classFile = classPool[math.random(#classPool)]
-        local score = math.random(200, 3500)
-        local numRuns = math.random(0, 8)
-        local totalKeyLevel = 0
+
+        -- Pick a target key level (2-20), then derive score from it
+        -- This ensures score and key level are properly correlated
+        local targetKeyLevel = math.random(2, 20)
+
+        -- Number of dungeons completed: higher key = more likely to have all 8
+        local minRuns = math.max(1, math.floor(targetKeyLevel / 4))
+        local numRuns = math.min(numDungeons, math.random(minRuns, numDungeons))
+
+        -- Timed ratio: higher keys = more skilled = higher timed ratio
+        local timedChance = 0.4 + (targetKeyLevel / 20) * 0.45 -- 40% at +2, 85% at +20
 
         local runs = {}
         local numTimed = 0
         local numUntimed = 0
-        -- Pick random dungeons from the season pool
+        local totalKeyLevel = 0
+        local totalScore = 0
+
         local shuffled = {}
         for _, id in ipairs(KS.DUNGEON_IDS) do table.insert(shuffled, id) end
         for j = #shuffled, 2, -1 do
             local k = math.random(1, j)
             shuffled[j], shuffled[k] = shuffled[k], shuffled[j]
         end
+
         for r = 1, numRuns do
-            local mapID = shuffled[r] or (r * 100)
-            local level = math.random(2, 15)
+            local mapID = shuffled[r]
+            -- Key level varies around target (+/- 2)
+            local level = targetKeyLevel + math.random(-2, 2)
+            level = math.max(2, math.min(level, 25))
             totalKeyLevel = totalKeyLevel + level
-            local timed = math.random() > 0.3
+
+            local timed = math.random() < timedChance
             if timed then numTimed = numTimed + 1 else numUntimed = numUntimed + 1 end
+
+            -- Per-dungeon score from the base table
+            local baseScore = KEY_BASE_SCORE[level] or (155 + (level - 2) * 15)
+            -- Timed runs get full score, untimed lose ~30%
+            local runScore = timed and baseScore or math.floor(baseScore * 0.7)
+            -- Small variance for time bonus/penalty
+            runScore = runScore + math.random(-10, 15)
+
+            totalScore = totalScore + runScore
             runs[mapID] = {
                 level = level,
                 timed = timed,
-                score = math.random(50, 300),
+                score = runScore,
             }
         end
+
+        local avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
+
+        -- Item level correlates with key level
+        -- +2 runners: ~207-230, +10 runners: ~250-265, +15 runners: ~265-280, +20: ~275-289
+        local ilvlBase = 207 + (targetKeyLevel / 20) * 70
+        local ilvl = math.floor(ilvlBase + (math.random() - 0.5) * 16)
+        ilvl = math.max(207, math.min(ilvl, 289))
+
+        -- Keystone thresholds: how many keys timed at each threshold
+        local k5  = math.max(0, math.floor((targetKeyLevel - 3) * 6 + math.random(-5, 10)))
+        local k10 = math.max(0, math.floor((targetKeyLevel - 8) * 4 + math.random(-3, 5)))
+        local k15 = math.max(0, math.floor((targetKeyLevel - 13) * 3 + math.random(-2, 3)))
+        local k20 = math.max(0, math.floor((targetKeyLevel - 18) * 2 + math.random(-1, 2)))
 
         table.insert(KS.roster, {
             name = PREVIEW_NAMES[i] or ("Player" .. i),
             unit = "player",
             classFile = classFile,
             role = role,
-            score = score,
-            previousScore = math.random(0, score),
+            score = totalScore,
+            previousScore = math.floor(totalScore * (0.4 + math.random() * 0.5)),
             runs = runs,
-            avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0,
+            avgKeyLevel = avgKeyLevel,
             numRuns = numRuns,
             numTimed = numTimed,
             numUntimed = numUntimed,
-            keystoneFivePlus = math.random(0, 80),
-            keystoneTenPlus = math.random(0, 40),
-            keystoneFifteenPlus = math.random(0, 15),
-            keystoneTwentyPlus = math.random(0, 5),
-            ilvl = math.random(207, 289),
+            keystoneFivePlus = k5,
+            keystoneTenPlus = k10,
+            keystoneFifteenPlus = k15,
+            keystoneTwentyPlus = k20,
+            ilvl = ilvl,
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,

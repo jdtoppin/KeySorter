@@ -21,7 +21,7 @@ KS.SHROUD = {
 
 -- Score thresholds for filtering
 KS.SCORE_THRESHOLDS = {
-    { label = "All",     min = 0,    max = 99999 },
+    { label = "All Scores", min = 0,    max = 99999 },
     { label = "<500",    min = 0,    max = 499 },
     { label = "500-1k",  min = 500,  max = 999 },
     { label = "1k-1.5k", min = 1000, max = 1499 },
