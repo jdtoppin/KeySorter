@@ -470,7 +470,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     if group.locked then
         card:SetBorderColor(0.1, 0.5, 0.1, 1)
     end
-    KS.SetTooltip(lockBtn, "ANCHOR_RIGHT", {"Lock Group", "Locked groups are preserved when re-sorting."})
+    KS.SetTooltip(lockBtn, "ANCHOR_RIGHT", {"Mark Done", "Groups marked done are preserved when re-sorting."})
 
     -- Group header (row 1: group name, avg score, announce)
     local header = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
