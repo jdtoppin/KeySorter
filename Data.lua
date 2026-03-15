@@ -79,3 +79,40 @@ KS.sortMode = "matched"
 
 -- Class colors fallback
 KS.CLASS_COLORS = RAID_CLASS_COLORS
+
+-- Shared color/name helpers (used by RosterView, CharacterDetail, GroupView)
+function KS.GetScoreColor(score)
+    if C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor then
+        local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
+        if color then return color.r, color.g, color.b end
+    end
+    if score >= 2500 then return 1, 0.5, 0
+    elseif score >= 2000 then return 0.6, 0.2, 0.8
+    elseif score >= 1500 then return 0, 0.4, 1
+    elseif score >= 1000 then return 0, 0.8, 0
+    elseif score >= 500 then return 1, 1, 1
+    else return 0.6, 0.6, 0.6 end
+end
+
+function KS.GetIlvlColor(ilvl)
+    local anchors = KS.ILVL_COLORS
+    if not anchors or #anchors == 0 then return 1, 1, 1 end
+    if ilvl <= anchors[1].ilvl then return anchors[1].r, anchors[1].g, anchors[1].b end
+    if ilvl >= anchors[#anchors].ilvl then return anchors[#anchors].r, anchors[#anchors].g, anchors[#anchors].b end
+    for i = 2, #anchors do
+        if ilvl <= anchors[i].ilvl then
+            local lo, hi = anchors[i - 1], anchors[i]
+            local t = (ilvl - lo.ilvl) / (hi.ilvl - lo.ilvl)
+            return lo.r + t * (hi.r - lo.r), lo.g + t * (hi.g - lo.g), lo.b + t * (hi.b - lo.b)
+        end
+    end
+    return 1, 1, 1
+end
+
+function KS.GetDungeonName(mapID)
+    if C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
+        local name = C_ChallengeMode.GetMapUIInfo(mapID)
+        if name then return name end
+    end
+    return KS.DUNGEON_NAMES[mapID] or ("Dungeon " .. mapID)
+end

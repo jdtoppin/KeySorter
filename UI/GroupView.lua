@@ -336,7 +336,6 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
         end)
         line:SetScript("OnLeave", function(self)
             KS.HideTooltip()
-            GameTooltip:Hide()
             self._shiftShown = false
             if self._highlightTex then self._highlightTex:Hide() end
             if self._dropBorder then self._dropBorder:Hide() end
@@ -349,11 +348,11 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
     return line
 end
 
-local HEADER_ROWS = 24  -- header row only (utilities now inline with member names)
+local GROUP_HEADER_H = 24  -- header row only (utilities now inline with member names)
 
 local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     local numDpsSlots = math.max(#group.dps, 3)
-    local cardHeight = HEADER_ROWS + (2 + numDpsSlots) * MEMBER_HEIGHT + 8
+    local cardHeight = GROUP_HEADER_H + (2 + numDpsSlots) * MEMBER_HEIGHT + 8
 
     -- Use BorderedFrame for group card
     local card = KS.CreateBorderedFrame(parent, CARD_WIDTH, cardHeight,
@@ -398,7 +397,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     KS.SetTooltip(announceBtn, "ANCHOR_RIGHT", {"Announce Group", "Post this group's assignments to raid chat."})
 
     -- Members (start below header)
-    local y = -HEADER_ROWS
+    local y = -GROUP_HEADER_H
     CreateMemberLine(card, y, "TANK", group.tank, groupIdx, "tank", nil)
     y = y - MEMBER_HEIGHT
     CreateMemberLine(card, y, "HEALER", group.healer, groupIdx, "healer", nil)

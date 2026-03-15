@@ -194,5 +194,8 @@ function KS.ScanUnit(unit, name, raidIndex)
         KeySorterDB.ilvlCache[name] = entry.ilvl
     end
 
+    -- Precompute utility count for roster sorting
+    entry.utilityCount = (entry.hasBrez and 1 or 0) + (entry.hasLust and 1 or 0) + (entry.hasShroud and 1 or 0)
+
     table.insert(KS.roster, entry)
 end

@@ -205,11 +205,3 @@ function KS.CreateAboutView(parent)
 
     scrollChild:SetHeight(math.abs(y) + 16)
 end
-
--- Keep ToggleAbout for the slash command; switches to the about tab
-function KS.ToggleAbout()
-    if KS.mainFrame and KS.SetTab then
-        KS.mainFrame:Show()
-        KS.SetTab("about")
-    end
-end

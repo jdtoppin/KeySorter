@@ -37,7 +37,9 @@ end
 
 local function CompareMembers(a, b)
     local va, vb = a[sortField], b[sortField]
-    if type(va) == "string" then
+    if type(va) == "string" or type(vb) == "string" then
+        va = va or ""
+        vb = vb or ""
         if sortAsc then return va < vb else return va > vb end
     else
         va = va or 0
@@ -67,55 +69,10 @@ local function PassesFilter(member)
     return true
 end
 
-local function GetIlvlColor(ilvl)
-    local anchors = KS.ILVL_COLORS
-    if not anchors or #anchors == 0 then return 1, 1, 1 end
-
-    -- Clamp below first anchor
-    if ilvl <= anchors[1].ilvl then
-        return anchors[1].r, anchors[1].g, anchors[1].b
-    end
-    -- Clamp above last anchor
-    if ilvl >= anchors[#anchors].ilvl then
-        return anchors[#anchors].r, anchors[#anchors].g, anchors[#anchors].b
-    end
-
-    -- Interpolate between two surrounding anchors
-    for i = 2, #anchors do
-        if ilvl <= anchors[i].ilvl then
-            local lo = anchors[i - 1]
-            local hi = anchors[i]
-            local t = (ilvl - lo.ilvl) / (hi.ilvl - lo.ilvl)
-            return lo.r + t * (hi.r - lo.r),
-                   lo.g + t * (hi.g - lo.g),
-                   lo.b + t * (hi.b - lo.b)
-        end
-    end
-
-    return 1, 1, 1
-end
-
-local function GetScoreColor(score)
-    if C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor then
-        local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
-        if color then return color.r, color.g, color.b end
-    end
-    if score >= 2500 then return 1, 0.5, 0
-    elseif score >= 2000 then return 0.6, 0.2, 0.8
-    elseif score >= 1500 then return 0, 0.4, 1
-    elseif score >= 1000 then return 0, 0.8, 0
-    elseif score >= 500 then return 1, 1, 1
-    else return 0.6, 0.6, 0.6 end
-end
-
--- Resolve dungeon name: try game API first, fall back to Data.lua table
-local function GetDungeonName(mapID)
-    if C_ChallengeMode and C_ChallengeMode.GetMapUIInfo then
-        local name = C_ChallengeMode.GetMapUIInfo(mapID)
-        if name then return name end
-    end
-    return KS.DUNGEON_NAMES[mapID] or ("Dungeon " .. mapID)
-end
+-- Use shared helpers from Data.lua
+local GetIlvlColor = function(ilvl) return KS.GetIlvlColor(ilvl) end
+local GetScoreColor = function(score) return KS.GetScoreColor(score) end
+local GetDungeonName = function(mapID) return KS.GetDungeonName(mapID) end
 
 -- Build the shift-tooltip for a member's per-dungeon breakdown
 function KS.ShowMemberTooltip(row, member)
@@ -249,7 +206,6 @@ local function CreateRow(parent, index)
     row:SetScript("OnLeave", function(self)
         hoverTex:Hide()
         KS.HideTooltip()
-        GameTooltip:Hide()
         self._shiftShown = false
     end)
     row:SetScript("OnClick", function(self)
@@ -265,7 +221,6 @@ local function CreateRow(parent, index)
             self._shiftShown = true
         elseif not shiftDown and self._shiftShown then
             KS.HideTooltip()
-            GameTooltip:Hide()
             self._shiftShown = false
         end
     end)
@@ -483,8 +438,6 @@ function KS.UpdateRosterView()
     local filtered = {}
     for _, member in ipairs(KS.roster) do
         if PassesFilter(member) then
-            -- Compute utility count for sorting
-            member.utilityCount = (member.hasBrez and 1 or 0) + (member.hasLust and 1 or 0) + (member.hasShroud and 1 or 0)
             table.insert(filtered, member)
         end
     end

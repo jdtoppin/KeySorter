@@ -97,7 +97,6 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.minimapPos = KeySorterDB.minimapPos or 225
             KeySorterDB.ilvlCache = KeySorterDB.ilvlCache or {}
             KeySorterDB.uiScale = KeySorterDB.uiScale or 1.0
-            KeySorterDB.sidebarCollapsed = KeySorterDB.sidebarCollapsed or false
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
@@ -124,7 +123,9 @@ end)
 function KS.IsPermitted()
     if KS.previewMode then return true end
     if not IsInRaid() then return true end
-    local _, rank = GetRaidRosterInfo(UnitInRaid("player") + 1)
+    local raidIdx = UnitInRaid("player")
+    if not raidIdx then return true end
+    local _, rank = GetRaidRosterInfo(raidIdx + 1)
     return rank and rank > 0
 end
 
@@ -161,6 +162,83 @@ local function PrintHelp()
     print("  |cff00ff00/ks preview|r — open settings (preview mode)")
     print("  |cff00ff00/ks about|r — credits & license info")
     print("  |cff00ff00/ks help|r — show this help")
+end
+
+---------------------------------------------------------------------------
+-- Apply groups: move players into raid subgroups
+---------------------------------------------------------------------------
+function KS.ApplyGroups()
+    if #KS.groups == 0 then
+        print("|cff00ccffKeySorter|r: No groups to apply. Sort first.")
+        return
+    end
+    if KS.previewMode then
+        print("|cff00ccffKeySorter|r: Cannot apply in preview mode.")
+        return
+    end
+    if not IsInRaid() then
+        print("|cff00ccffKeySorter|r: Must be in a raid to apply groups.")
+        return
+    end
+    if not KS.IsPermitted() then
+        print("|cff00ccffKeySorter|r: Only raid leader/assistants can apply groups.")
+        return
+    end
+
+    for groupIdx, group in ipairs(KS.groups) do
+        local members = {}
+        if group.tank then table.insert(members, group.tank) end
+        if group.healer then table.insert(members, group.healer) end
+        for _, d in ipairs(group.dps) do table.insert(members, d) end
+
+        for _, member in ipairs(members) do
+            for ri = 1, GetNumGroupMembers() do
+                local raidName = GetRaidRosterInfo(ri)
+                if raidName and raidName == member.name then
+                    local _, _, currentGroup = GetRaidRosterInfo(ri)
+                    if currentGroup ~= groupIdx then
+                        SetRaidSubgroup(ri, groupIdx)
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    print("|cff00ccffKeySorter|r: Groups applied to raid subgroups.")
+end
+
+---------------------------------------------------------------------------
+-- Announce groups: post assignments to raid chat
+---------------------------------------------------------------------------
+function KS.AnnounceGroup(groupIdx)
+    local group = KS.groups[groupIdx]
+    if not group then return end
+
+    if not KS.previewMode then
+        if not IsInRaid() then
+            print("|cff00ccffKeySorter|r: Must be in a raid to announce.")
+            return
+        end
+        if not KS.IsPermitted() then
+            print("|cff00ccffKeySorter|r: Only raid leader/assistants can announce.")
+            return
+        end
+    end
+
+    local function Output(msg)
+        if KS.previewMode then
+            print("|cff00ccff[Preview]|r " .. msg)
+        else
+            SendChatMessage(msg, "RAID")
+        end
+    end
+
+    local names = {}
+    if group.tank then table.insert(names, group.tank.name .. " (T)") end
+    if group.healer then table.insert(names, group.healer.name .. " (H)") end
+    for _, d in ipairs(group.dps) do table.insert(names, d.name) end
+    Output(format("Group %d: %s", groupIdx, table.concat(names, ", ")))
 end
 
 SLASH_KEYSORTER1 = "/ks"
@@ -377,6 +455,7 @@ function KS.GeneratePreviewData()
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,
             hasShroud = KS.SHROUD[classFile] or false,
+            utilityCount = (KS.BREZ[classFile] and 1 or 0) + (KS.LUST[classFile] and 1 or 0) + (KS.SHROUD[classFile] and 1 or 0),
             dataSource = "raiderio",
         })
     end
