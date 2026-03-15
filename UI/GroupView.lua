@@ -262,8 +262,11 @@ local function StopDrag(line)
         -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then
             local cleaned = {}
-            for _, m in ipairs(KS.unassigned) do
-                if m then table.insert(cleaned, m) end
+            -- Use pairs to handle sparse tables (ipairs stops at first nil)
+            for k, m in pairs(KS.unassigned) do
+                if type(k) == "number" and m then
+                    table.insert(cleaned, m)
+                end
             end
             wipe(KS.unassigned)
             for _, m in ipairs(cleaned) do table.insert(KS.unassigned, m) end
