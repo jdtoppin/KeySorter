@@ -351,17 +351,18 @@ function KS.GeneratePreviewData()
     -- adding new members and removing departed ones
 
     local numPlayers = KS.previewPlayerCount or 25
-    local numGroups = math.floor(numPlayers / 5)
-    local numTanks = math.max(numGroups, 1)
-    local numHealers = math.max(numGroups, 1)
     local numDungeons = #KS.DUNGEON_IDS
 
     for i = 1, numPlayers do
+        -- Role assignment is stable per player index (modulo 5):
+        -- every 5th player starting at 1 is a tank, at 2 is a healer, rest are DPS
+        -- This ensures roles don't change when player count increases
         local role, classPool
-        if i <= numTanks then
+        local slot = ((i - 1) % 5)
+        if slot == 0 then
             role = "TANK"
             classPool = PREVIEW_TANK_CLASSES
-        elseif i <= numTanks + numHealers then
+        elseif slot == 1 then
             role = "HEALER"
             classPool = PREVIEW_HEALER_CLASSES
         else
