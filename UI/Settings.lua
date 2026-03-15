@@ -105,16 +105,14 @@ function KS.CreateSettingsView(parent)
     simDesc:SetTextColor(0.6, 0.6, 0.6)
     y = y - 20
 
-    local simStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    simStatus:SetPoint("TOPLEFT", 16, y)
-    simStatus:SetText("")
-    simStatus:SetTextColor(0.7, 0.7, 0.7)
-
     local simBtn = KS.CreateButton(scrollChild, "Start Simulation", "accent", 110, 22)
     simBtn:SetAnimatedHighlight(true)
     simBtn:SetPoint("TOPLEFT", 16, y)
 
+    local simStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     simStatus:SetPoint("LEFT", simBtn, "RIGHT", 12, 0)
+    simStatus:SetText("")
+    simStatus:SetTextColor(0.7, 0.7, 0.7)
     y = y - 30
 
     local simTargetSlider = KS.CreateSlider(scrollChild, "Target Players", 5, 40, 1, 200)
