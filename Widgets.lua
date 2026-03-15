@@ -189,15 +189,24 @@ function KS.CreateButton(parent, text, colorName, width, height)
         if self._unhighlightText then self._unhighlightText() end
     end)
 
-    -- Push effect
+    -- Push effect + click flash
     btn:SetScript("OnMouseDown", function(self)
         if self._disabled then return end
         self._label:SetPoint("CENTER", 0, -1)
         if self._tex then self._tex:SetPoint("CENTER", 0, -1) end
+        -- Snap fill to full on press
+        if self._animHighlight and self._animTex then
+            self._animTex:Show()
+            self._animTex:SetHeight(self:GetHeight() - 2)
+        end
     end)
     btn:SetScript("OnMouseUp", function(self)
         self._label:SetPoint("CENTER", 0, 0)
         if self._tex then self._tex:SetPoint("CENTER", 0, 0) end
+        -- Animate fill back down after click
+        if self._animHighlight and self._animTex then
+            AnimateButtonHighlight(self, self:IsMouseOver() and (self:GetHeight() - 2) or 1, 0.15)
+        end
     end)
 
     function btn:SetOnClick(fn)
