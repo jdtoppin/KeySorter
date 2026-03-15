@@ -60,6 +60,7 @@ function KS.CreateSidebar(parent)
         { key = "roster",   icon = KS.MEDIA.IconRoster,   label = "Roster" },
         { key = "groups",   icon = KS.MEDIA.IconGroups,   label = "Groups" },
         "SEPARATOR",
+        { key = "welcome",  icon = KS.MEDIA.IconWelcome,  label = "Welcome", action = true },
         { key = "gather",   icon = KS.MEDIA.IconGather,   label = "Gather", action = true },
         "SEPARATOR",
         { key = "settings", icon = KS.MEDIA.IconSettings, label = "Settings" },

@@ -35,16 +35,30 @@ function KS.CreateMainFrame()
 
     -- Register sidebar action buttons
     KS.SidebarActions = {
-        gather = function()
+        welcome = function()
+            local msg = KeySorterDB.welcomeMsg or "Welcome to M+ night!"
             if KS.previewMode then
-                print("|cff00ccff[Preview]|r Please gather at Silvermoon by the Weekly Vendors for group sorting!")
+                print("|cff00ccff[Preview]|r " .. msg)
             elseif IsInRaid() and KS.IsPermitted() then
-                SendChatMessage("Please gather at Silvermoon by the Weekly Vendors for group sorting!", "RAID")
+                SendChatMessage(msg, "RAID")
+                print("|cff00ccffKeySorter|r: Welcome message sent.")
+            elseif IsInRaid() then
+                print("|cff00ccffKeySorter|r: Only raid leader/assistants can send announcements.")
+            else
+                print("|cff00ccffKeySorter|r: Must be in a raid to send announcements.")
+            end
+        end,
+        gather = function()
+            local msg = KeySorterDB.gatherMsg or "Please gather at Silvermoon by the Weekly Vendors for group sorting!"
+            if KS.previewMode then
+                print("|cff00ccff[Preview]|r " .. msg)
+            elseif IsInRaid() and KS.IsPermitted() then
+                SendChatMessage(msg, "RAID")
                 print("|cff00ccffKeySorter|r: Gather announcement sent.")
             elseif IsInRaid() then
-                print("|cff00ccffKeySorter|r: Only raid leader/assistants can send gather announcements.")
+                print("|cff00ccffKeySorter|r: Only raid leader/assistants can send announcements.")
             else
-                print("|cff00ccffKeySorter|r: Must be in a raid to send gather announcements.")
+                print("|cff00ccffKeySorter|r: Must be in a raid to send announcements.")
             end
         end,
     }

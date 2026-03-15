@@ -221,6 +221,75 @@ function KS.CreateSettingsView(parent)
     end)
     y = y - 48
 
+    ---------------------------------------------------------------------------
+    -- Announcements
+    ---------------------------------------------------------------------------
+    AddSettingLabel("Announcements", 0, 0.8, 1, "GameFontNormal")
+
+    -- Welcome message
+    local welcomeLabel = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    welcomeLabel:SetPoint("TOPLEFT", 16, y)
+    welcomeLabel:SetText("Welcome Message")
+    welcomeLabel:SetTextColor(0.7, 0.7, 0.7)
+    y = y - 16
+
+    local welcomeBox = CreateFrame("EditBox", nil, scrollChild, "BackdropTemplate")
+    welcomeBox:SetPoint("TOPLEFT", 16, y)
+    welcomeBox:SetPoint("TOPRIGHT", -16, y)
+    welcomeBox:SetHeight(32)
+    welcomeBox:SetBackdrop(KS.BACKDROP)
+    welcomeBox:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+    welcomeBox:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    welcomeBox:SetFontObject("GameFontHighlightSmall")
+    welcomeBox:SetAutoFocus(false)
+    welcomeBox:SetMultiLine(false)
+    welcomeBox:SetTextInsets(6, 6, 4, 4)
+    welcomeBox:SetText(KeySorterDB.welcomeMsg or "")
+    welcomeBox:SetScript("OnEnterPressed", function(self)
+        KeySorterDB.welcomeMsg = self:GetText()
+        self:ClearFocus()
+    end)
+    welcomeBox:SetScript("OnEscapePressed", function(self)
+        self:SetText(KeySorterDB.welcomeMsg or "")
+        self:ClearFocus()
+    end)
+    welcomeBox:SetScript("OnEditFocusLost", function(self)
+        KeySorterDB.welcomeMsg = self:GetText()
+    end)
+    y = y - 38
+
+    -- Gather message
+    local gatherLabel = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    gatherLabel:SetPoint("TOPLEFT", 16, y)
+    gatherLabel:SetText("Gather Message")
+    gatherLabel:SetTextColor(0.7, 0.7, 0.7)
+    y = y - 16
+
+    local gatherBox = CreateFrame("EditBox", nil, scrollChild, "BackdropTemplate")
+    gatherBox:SetPoint("TOPLEFT", 16, y)
+    gatherBox:SetPoint("TOPRIGHT", -16, y)
+    gatherBox:SetHeight(32)
+    gatherBox:SetBackdrop(KS.BACKDROP)
+    gatherBox:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+    gatherBox:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    gatherBox:SetFontObject("GameFontHighlightSmall")
+    gatherBox:SetAutoFocus(false)
+    gatherBox:SetMultiLine(false)
+    gatherBox:SetTextInsets(6, 6, 4, 4)
+    gatherBox:SetText(KeySorterDB.gatherMsg or "")
+    gatherBox:SetScript("OnEnterPressed", function(self)
+        KeySorterDB.gatherMsg = self:GetText()
+        self:ClearFocus()
+    end)
+    gatherBox:SetScript("OnEscapePressed", function(self)
+        self:SetText(KeySorterDB.gatherMsg or "")
+        self:ClearFocus()
+    end)
+    gatherBox:SetScript("OnEditFocusLost", function(self)
+        KeySorterDB.gatherMsg = self:GetText()
+    end)
+    y = y - 38
+
     AddSettingRow("Season Dungeon Pool", "|cff666666Coming Soon|r")
     AddSettingRow("Font", "|cff666666Coming Soon|r")
     AddSettingRow("Font Size", "|cff666666Coming Soon|r")

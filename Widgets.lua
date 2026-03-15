@@ -44,6 +44,7 @@ KS.MEDIA = {
     GradientH    = MEDIA_PATH .. "GradientH",
     LogoFull     = MEDIA_PATH .. "LogoFull",
     LogoKS       = MEDIA_PATH .. "LogoKS",
+    IconWelcome  = MEDIA_PATH .. "IconWelcome",
     IconGather   = MEDIA_PATH .. "IconGather",
     Warning      = MEDIA_PATH .. "Warning",
 }
