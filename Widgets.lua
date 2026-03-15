@@ -181,29 +181,28 @@ function KS.CreateButton(parent, text, colorName, width, height)
         if self._unhighlightText then self._unhighlightText() end
     end)
 
-    -- Push effect + click fill animation
+    -- Push effect
     btn:SetScript("OnMouseDown", function(self)
         if self._disabled then return end
         self._label:SetPoint("CENTER", 0, -1)
         if self._tex then self._tex:SetPoint("CENTER", 0, -1) end
-        -- Animate fill from bottom to top on click
-        if self._animHighlight and self._animTex then
-            self._animTex:Show()
-            AnimateButtonHighlight(self, self:GetHeight() - 2, 0.15)
-        end
     end)
     btn:SetScript("OnMouseUp", function(self)
         self._label:SetPoint("CENTER", 0, 0)
         if self._tex then self._tex:SetPoint("CENTER", 0, 0) end
-        -- Animate fill back down
-        if self._animHighlight and self._animTex then
-            AnimateButtonHighlight(self, 1, 0.1)
-        end
     end)
 
     function btn:SetOnClick(fn)
         self:SetScript("OnClick", function(self, ...)
             if self._disabled then return end
+            -- Click fill animation: grow up, hold, shrink back
+            if self._animHighlight and self._animTex then
+                self._animTex:Show()
+                AnimateButtonHighlight(self, self:GetHeight() - 2, 0.15)
+                C_Timer.After(0.3, function()
+                    AnimateButtonHighlight(self, 1, 0.15)
+                end)
+            end
             fn(self, ...)
         end)
     end
@@ -626,18 +625,34 @@ function KS.CreateDropdown(parent, width)
         arrow:SetVertexColor(0.7, 0.7, 0.7)
     end)
 
-    -- Click: fill animation + push effect
+    -- Push effect + click fill animation
     dd:RegisterForClicks("LeftButtonUp")
     dd:SetScript("OnMouseDown", function(self)
         label:SetPoint("LEFT", 6, -1)
         arrow:SetPoint("RIGHT", -6, -1)
-        ddHighlight:Show()
-        AnimateDDHighlight(self:GetHeight() - 2, 0.15)
     end)
     dd:SetScript("OnMouseUp", function(self)
         label:SetPoint("LEFT", 6, 0)
         arrow:SetPoint("RIGHT", -6, 0)
-        AnimateDDHighlight(1, 0.1)
+    end)
+    dd:SetScript("OnClick", function()
+        -- Click fill animation: grow up, hold, shrink back
+        ddHighlight:Show()
+        AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
+        C_Timer.After(0.3, function()
+            AnimateDDHighlight(1, 0.15)
+        end)
+
+        local list = GetOrCreateDropdownList()
+        if list:IsShown() and list._currentOwner == dd then
+            list:Hide()
+        else
+            KS.CloseDropdown()
+            list._currentOwner = dd
+            BuildList()
+            list:Show()
+            arrow:SetTexture(KS.MEDIA.ArrowUp)
+        end
     end)
 
     local function BuildList()
@@ -705,19 +720,6 @@ function KS.CreateDropdown(parent, width)
             mb:Show()
         end
     end
-
-    dd:SetScript("OnClick", function()
-        local list = GetOrCreateDropdownList()
-        if list:IsShown() and list._currentOwner == dd then
-            list:Hide()
-        else
-            KS.CloseDropdown()
-            list._currentOwner = dd
-            BuildList()
-            list:Show()
-            arrow:SetTexture(KS.MEDIA.ArrowUp)
-        end
-    end)
 
     -- Reset arrow when list hides (via owner tracking, not per-dropdown hooks)
     local function EnsureListHideHook()
