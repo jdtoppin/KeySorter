@@ -669,9 +669,16 @@ function KS.UpdateGroupView()
         local baseIdx = #KS.groups
         for i, group in ipairs(KS.incompleteGroups) do
             local card = CreateGroupCard(scrollChild, baseIdx + i, group, 0, 0)
-            -- Dim border for empty/incomplete groups
-            card:SetBorderColor(0.3, 0.3, 0.3, 0.5)
-            card:SetBackgroundColor(0.08, 0.08, 0.08, 0.7)
+            -- Only dim if the group is truly empty (no members at all)
+            -- If it has members with bad composition, CreateGroupCard already set red border
+            local count = 0
+            if group.tank then count = count + 1 end
+            if group.healer then count = count + 1 end
+            count = count + #group.dps
+            if count == 0 then
+                card:SetBorderColor(0.3, 0.3, 0.3, 0.5)
+                card:SetBackgroundColor(0.08, 0.08, 0.08, 0.7)
+            end
             table.insert(groupCards, card)
         end
     end
