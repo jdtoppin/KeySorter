@@ -2,6 +2,7 @@ local addonName, KS = ...
 
 local PREFIX = "KeySorter"
 local SYNC_MSG = "SYNC"
+local HELLO_MSG = "HELLO"
 
 -- Simple serialization (no external libs needed for v1)
 -- Format: "SYNC|groupCount|g1tank,g1healer,g1d1,g1d2,g1d3|g2...|unassigned:n1,n2,n3"
@@ -77,6 +78,15 @@ end
 
 function KS.HandleCommMessage(msg, sender)
     local parts = { strsplit("|", msg) }
+
+    -- Handle presence handshake
+    if parts[1] == HELLO_MSG then
+        local version = parts[2] or "?"
+        local role = parts[3] or "member"
+        print(format("|cff00ccffKeySorter|r: Synced with %s (v%s, %s). Addon communication active.", sender, version, role))
+        return
+    end
+
     if parts[1] ~= SYNC_MSG then return end
 
     local numGroups = tonumber(parts[2]) or 0
@@ -129,6 +139,20 @@ function KS.HandleCommMessage(msg, sender)
     print(format("|cff00ccffKeySorter|r: Received %d group(s) from %s.", numGroups, sender))
 
     if KS.UpdateGroupView then KS.UpdateGroupView() end
+end
+
+-- Broadcast presence to raid when joining
+function KS.SendHello()
+    if KS.previewMode then return end
+    if not IsInRaid() then return end
+    local version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"
+    local role = "member"
+    if UnitIsGroupLeader("player") then
+        role = "raid leader"
+    elseif KS.IsPermitted() then
+        role = "assistant"
+    end
+    C_ChatInfo.SendAddonMessage(PREFIX, HELLO_MSG .. "|" .. version .. "|" .. role, "RAID")
 end
 
 -- Initialize comms on load

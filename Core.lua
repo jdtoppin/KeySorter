@@ -107,6 +107,16 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
         KS.ScanRoster()
+        -- Broadcast presence when first joining a raid
+        if IsInRaid() and not KS._helloSent then
+            KS._helloSent = true
+            -- Delay slightly so raid comms are ready
+            C_Timer.After(2, function()
+                if IsInRaid() then KS.SendHello() end
+            end)
+        elseif not IsInRaid() then
+            KS._helloSent = false
+        end
         -- Reconcile: remove leavers, add joiners to unassigned
         if #KS.groups > 0 then
             KS.ReconcileGroups()
