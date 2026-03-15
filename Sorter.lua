@@ -106,39 +106,52 @@ function KS.SortGroups()
         end
     end
 
-    -- Step 4b: Distribute extras across new groups
-    local extras = {}
-    for i = numNewGroups + 1, #tanks do
-        table.insert(extras, tanks[i])
-    end
-    for i = numNewGroups + 1, #healers do
-        table.insert(extras, healers[i])
-    end
-    for i = dpsToAssign + 1, #dps do
-        table.insert(extras, dps[i])
+    -- Step 4b: Form incomplete groups from extras (max 5 per group)
+    local extraTanks = {}
+    for i = numNewGroups + 1, #tanks do table.insert(extraTanks, tanks[i]) end
+    local extraHealers = {}
+    for i = numNewGroups + 1, #healers do table.insert(extraHealers, healers[i]) end
+    local extraDps = {}
+    for i = dpsToAssign + 1, #dps do table.insert(extraDps, dps[i]) end
+
+    -- Build incomplete groups from extras (fill up to 5 each)
+    local incompleteGroups = {}
+    while #extraTanks > 0 or #extraHealers > 0 or #extraDps > 0 do
+        local group = { tank = nil, healer = nil, dps = {} }
+        local count = 0
+
+        if #extraTanks > 0 then
+            group.tank = table.remove(extraTanks, 1)
+            count = count + 1
+        end
+        if #extraHealers > 0 then
+            group.healer = table.remove(extraHealers, 1)
+            count = count + 1
+        end
+        while #extraDps > 0 and count < 5 do
+            table.insert(group.dps, table.remove(extraDps, 1))
+            count = count + 1
+        end
+
+        table.insert(incompleteGroups, group)
     end
 
-    table.sort(extras, function(a, b)
-        if a.score ~= b.score then return a.score > b.score end
-        return (a.ilvl or 0) > (b.ilvl or 0)
-    end)
-
-    for _, extra in ipairs(extras) do
-        table.insert(KS.unassigned, extra)
-    end
-
-    -- Merge: locked groups first (preserve their positions), then new groups
+    -- Merge: locked groups first (preserve their positions), then complete, then incomplete
     wipe(KS.groups)
     -- Place locked groups back at their original indices
     for _, lg in ipairs(lockedGroups) do
         KS.groups[lg.index] = lg.group
     end
-    -- Fill remaining slots with new groups
+    -- Fill remaining slots with new complete groups, then incomplete groups
+    local allNewGroups = {}
+    for _, g in ipairs(newGroups) do table.insert(allNewGroups, g) end
+    for _, g in ipairs(incompleteGroups) do table.insert(allNewGroups, g) end
+
     local newIdx = 1
-    for i = 1, #lockedGroups + numNewGroups do
+    for i = 1, #lockedGroups + #allNewGroups do
         if not KS.groups[i] then
-            if newIdx <= numNewGroups then
-                KS.groups[i] = newGroups[newIdx]
+            if newIdx <= #allNewGroups then
+                KS.groups[i] = allNewGroups[newIdx]
                 newIdx = newIdx + 1
             end
         end

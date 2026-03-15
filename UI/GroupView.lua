@@ -146,6 +146,10 @@ local function FindDropTarget()
 end
 
 local function GetMemberFromSlot(groupIdx, slot, slotIdx)
+    if groupIdx == 0 then
+        -- Unassigned pool
+        return KS.unassigned[slotIdx]
+    end
     local group = KS.groups[groupIdx]
     if not group then return nil end
     if slot == "tank" then return group.tank
@@ -155,12 +159,28 @@ local function GetMemberFromSlot(groupIdx, slot, slotIdx)
 end
 
 local function SetMemberInSlot(groupIdx, slot, slotIdx, member)
+    if groupIdx == 0 then
+        -- Unassigned pool
+        KS.unassigned[slotIdx] = member
+        return
+    end
     local group = KS.groups[groupIdx]
     if not group then return end
     if slot == "tank" then group.tank = member
     elseif slot == "healer" then group.healer = member
     elseif slot == "dps" then group.dps[slotIdx] = member
     end
+end
+
+-- Count members in a group (for enforcing max 5)
+local function CountGroupMembers(groupIdx)
+    local group = KS.groups[groupIdx]
+    if not group then return 0 end
+    local count = 0
+    if group.tank then count = count + 1 end
+    if group.healer then count = count + 1 end
+    count = count + #group.dps
+    return count
 end
 
 local function FlashLine(line)
@@ -205,8 +225,26 @@ local function StopDrag(line)
             member = target._member,
         }
 
+        -- Check 5-member limit when dragging from unassigned into a group
+        if src.groupIdx == 0 and dst.groupIdx ~= 0 then
+            -- Swapping: unassigned member replaces group member (group stays at same count)
+        elseif dst.groupIdx == 0 and src.groupIdx ~= 0 then
+            -- Swapping: group member replaces unassigned member (group stays at same count)
+        end
+
+        -- Swap the two members
         SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
         SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
+
+        -- Clean up nil entries in unassigned (remove swapped-out nils)
+        if src.groupIdx == 0 or dst.groupIdx == 0 then
+            local cleaned = {}
+            for _, m in ipairs(KS.unassigned) do
+                if m then table.insert(cleaned, m) end
+            end
+            wipe(KS.unassigned)
+            for _, m in ipairs(cleaned) do table.insert(KS.unassigned, m) end
+        end
 
         -- Flash both swapped positions, then rebuild view after animation
         FlashLine(src.sourceLine)
@@ -427,8 +465,9 @@ local function CreateUnassignedCard(parent)
     header:SetTextColor(1, 0.6, 0)
 
     local y = -24
-    for _, member in ipairs(KS.unassigned) do
-        CreateMemberLine(card, y, member.role, member)
+    for idx, member in ipairs(KS.unassigned) do
+        -- groupIdx=0 marks unassigned, slotIdx is the index in KS.unassigned
+        CreateMemberLine(card, y, member.role, member, 0, "unassigned", idx)
         y = y - MEMBER_HEIGHT
     end
 
