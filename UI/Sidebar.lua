@@ -101,13 +101,14 @@ function KS.CreateSidebar(parent)
         btn:SetPoint("TOPLEFT", 2, yOffset)
         btn:SetPoint("TOPRIGHT", -3, yOffset)
 
-        -- Gradient highlight
+        -- Gradient highlight (hidden by default)
         local highlight = btn:CreateTexture(nil, "BORDER")
         highlight:SetPoint("TOPLEFT", 0, 0)
         highlight:SetPoint("BOTTOMLEFT", 0, 0)
         highlight:SetWidth(1)
         highlight:SetTexture(KS.MEDIA.GradientH)
         highlight:SetVertexColor(0, 0.8, 1, 1)
+        highlight:Hide()
         btn._highlight = highlight
 
         -- Icon
