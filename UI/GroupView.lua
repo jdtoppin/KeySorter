@@ -227,27 +227,31 @@ local function StopDrag(line)
     if not dragSource then return end
 
     local target = FindDropTarget()
-    if target and target._member and target ~= line then
+    -- Allow drop on occupied slots (swap) AND empty slots (place)
+    if target and target._groupIdx and target ~= line then
         local src = dragSource
         local dst = {
             groupIdx = target._groupIdx,
             slot = target._slot,
             slotIdx = target._slotIdx,
-            member = target._member,
+            member = target._member, -- may be nil for empty slots
         }
 
-        -- Check 5-member limit when dragging from unassigned into a group
-        if src.groupIdx == 0 and dst.groupIdx ~= 0 then
-            -- Swapping: unassigned member replaces group member (group stays at same count)
-        elseif dst.groupIdx == 0 and src.groupIdx ~= 0 then
-            -- Swapping: group member replaces unassigned member (group stays at same count)
+        -- Check 5-member limit: don't place into a full group (only for moves, not swaps)
+        if not dst.member and dst.groupIdx ~= 0 then
+            local group = ResolveGroup(dst.groupIdx)
+            if group and CountGroupMembers(dst.groupIdx) >= 5 then
+                -- Group is full, can't place here
+                dragSource = nil
+                return
+            end
         end
 
-        -- Swap the two members
+        -- Move/swap the members
         SetMemberInSlot(src.groupIdx, src.slot, src.slotIdx, dst.member)
         SetMemberInSlot(dst.groupIdx, dst.slot, dst.slotIdx, src.member)
 
-        -- Clean up nil entries in unassigned (remove swapped-out nils)
+        -- Clean up nil entries in unassigned
         if src.groupIdx == 0 or dst.groupIdx == 0 then
             local cleaned = {}
             for _, m in ipairs(KS.unassigned) do
@@ -257,13 +261,13 @@ local function StopDrag(line)
             for _, m in ipairs(cleaned) do table.insert(KS.unassigned, m) end
         end
 
-        -- Flash both swapped positions, then rebuild view after animation
+        -- Flash and rebuild
         FlashLine(src.sourceLine)
         FlashLine(target)
 
-        -- Defer view rebuild until flash animation completes (0.35s)
         C_Timer.After(0.35, function()
             KS.UpdateGroupView()
+            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         end)
         KS.AutoSync()
     end
@@ -279,7 +283,7 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
     line:SetPoint("TOPLEFT", 8, yOffset)
     line:SetPoint("TOPRIGHT", -8, yOffset)
     line:SetHeight(MEMBER_HEIGHT)
-    line:EnableMouse(member ~= nil)
+    line:EnableMouse(groupIdx ~= nil) -- enable mouse for all slots with group metadata
 
     -- Role icon
     local roleAtlas = KS.ROLE_ICONS[label]
@@ -304,12 +308,13 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
     end
     nameText:SetText(text)
 
+    -- Store metadata for all slots (even empty ones) so they can receive drops
+    line._member = member
+    line._groupIdx = groupIdx
+    line._slot = slot
+    line._slotIdx = slotIdx
+
     if member then
-        -- Store metadata for drag and drop
-        line._member = member
-        line._groupIdx = groupIdx
-        line._slot = slot       -- "tank", "healer", or "dps"
-        line._slotIdx = slotIdx -- index in dps array (nil for tank/healer)
 
         -- Click to open character detail (non-drag click)
         line:RegisterForClicks("RightButtonUp")
@@ -347,7 +352,7 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
 
             -- Drop target highlighting with border
             if dragSource and self ~= dragSource.sourceLine then
-                if self:IsMouseOver() and self._member then
+                if self:IsMouseOver() then
                     if not self._highlightTex then
                         self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
                         self._highlightTex:SetAllPoints()
@@ -391,6 +396,36 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
         end)
 
         -- Track this line for hit detection
+        table.insert(allMemberLines, line)
+
+    elseif groupIdx then
+        -- Empty slot: can receive drops but not initiate drag
+        line:SetScript("OnUpdate", function(self)
+            if dragSource and dragSource.sourceLine ~= self then
+                if self:IsMouseOver() then
+                    if not self._highlightTex then
+                        self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
+                        self._highlightTex:SetAllPoints()
+                        self._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
+                    end
+                    self._highlightTex:Show()
+                    if not self._dropBorder then
+                        self._dropBorder = self:CreateTexture(nil, "OVERLAY", nil, -1)
+                        self._dropBorder:SetPoint("TOPLEFT", -1, 1)
+                        self._dropBorder:SetPoint("BOTTOMRIGHT", 1, -1)
+                        self._dropBorder:SetColorTexture(0, 0.8, 1, 0.4)
+                    end
+                    self._dropBorder:Show()
+                else
+                    if self._highlightTex then self._highlightTex:Hide() end
+                    if self._dropBorder then self._dropBorder:Hide() end
+                end
+            end
+        end)
+        line:SetScript("OnLeave", function(self)
+            if self._highlightTex then self._highlightTex:Hide() end
+            if self._dropBorder then self._dropBorder:Hide() end
+        end)
         table.insert(allMemberLines, line)
     end
 
@@ -445,18 +480,14 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     announceBtn:SetOnClick(function() KS.AnnounceGroup(groupIdx) end)
     KS.SetTooltip(announceBtn, "ANCHOR_RIGHT", {"Announce Group", "Post this group's assignments to raid chat."})
 
-    -- Members (start below header)
+    -- Members (start below header) — all slots are drop targets even when empty
     local y = -GROUP_HEADER_H
     CreateMemberLine(card, y, "TANK", group.tank, groupIdx, "tank", nil)
     y = y - MEMBER_HEIGHT
     CreateMemberLine(card, y, "HEALER", group.healer, groupIdx, "healer", nil)
     y = y - MEMBER_HEIGHT
-    for dIdx, dps in ipairs(group.dps) do
-        CreateMemberLine(card, y, "DAMAGER", dps, groupIdx, "dps", dIdx)
-        y = y - MEMBER_HEIGHT
-    end
-    for _ = #group.dps + 1, 3 do
-        CreateMemberLine(card, y, "DAMAGER", nil)
+    for dIdx = 1, math.max(#group.dps, 3) do
+        CreateMemberLine(card, y, "DAMAGER", group.dps[dIdx], groupIdx, "dps", dIdx)
         y = y - MEMBER_HEIGHT
     end
 
