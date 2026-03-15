@@ -635,26 +635,6 @@ function KS.CreateDropdown(parent, width)
         label:SetPoint("LEFT", 6, 0)
         arrow:SetPoint("RIGHT", -6, 0)
     end)
-    dd:SetScript("OnClick", function()
-        -- Click fill animation: grow up, hold, shrink back
-        ddHighlight:Show()
-        AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
-        C_Timer.After(0.3, function()
-            AnimateDDHighlight(1, 0.15)
-        end)
-
-        local list = GetOrCreateDropdownList()
-        if list:IsShown() and list._currentOwner == dd then
-            list:Hide()
-        else
-            KS.CloseDropdown()
-            list._currentOwner = dd
-            BuildList()
-            list:Show()
-            arrow:SetTexture(KS.MEDIA.ArrowUp)
-        end
-    end)
-
     local function BuildList()
         local list = GetOrCreateDropdownList()
         -- Hide existing buttons
@@ -720,6 +700,26 @@ function KS.CreateDropdown(parent, width)
             mb:Show()
         end
     end
+
+    dd:SetScript("OnClick", function()
+        -- Click fill animation: grow up, hold, shrink back
+        ddHighlight:Show()
+        AnimateDDHighlight(dd:GetHeight() - 2, 0.15)
+        C_Timer.After(0.3, function()
+            AnimateDDHighlight(1, 0.15)
+        end)
+
+        local list = GetOrCreateDropdownList()
+        if list:IsShown() and list._currentOwner == dd then
+            list:Hide()
+        else
+            KS.CloseDropdown()
+            list._currentOwner = dd
+            BuildList()
+            list:Show()
+            arrow:SetTexture(KS.MEDIA.ArrowUp)
+        end
+    end)
 
     -- Reset arrow when list hides (via owner tracking, not per-dropdown hooks)
     local function EnsureListHideHook()
