@@ -314,12 +314,23 @@ end
 ---------------------------------------------------------------------------
 function KS.CreateResizeButton(parent)
     local btn = CreateFrame("Button", nil, parent)
-    btn:SetSize(16, 16)
+    btn:SetSize(14, 14)
     btn:SetPoint("BOTTOMRIGHT", -2, 2)
     btn:SetFrameLevel(parent:GetFrameLevel() + 15)
-    btn:SetNormalTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Up")
-    btn:SetHighlightTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Highlight")
-    btn:SetPushedTexture("Interface/ChatFrame/UI-ChatIM-SizeGrabber-Down")
+
+    local icon = btn:CreateTexture(nil, "OVERLAY")
+    icon:SetAllPoints()
+    icon:SetTexture(MEDIA_PATH .. "ResizeButton1")
+    icon:SetVertexColor(0.4, 0.4, 0.4)
+    btn._icon = icon
+
+    btn:SetScript("OnEnter", function(self)
+        self._icon:SetVertexColor(ACCENT_R, ACCENT_G, ACCENT_B)
+    end)
+    btn:SetScript("OnLeave", function(self)
+        self._icon:SetVertexColor(0.4, 0.4, 0.4)
+    end)
+
     return btn
 end
 
