@@ -24,6 +24,22 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     local sidebar = KS.CreateSidebar(f)
 
+    -- Register sidebar action buttons
+    KS.SidebarActions = {
+        gather = function()
+            if KS.previewMode then
+                print("|cff00ccff[Preview]|r Please gather at Silvermoon by the Weekly Vendors for group sorting!")
+            elseif IsInRaid() and KS.IsPermitted() then
+                SendChatMessage("Please gather at Silvermoon by the Weekly Vendors for group sorting!", "RAID")
+                print("|cff00ccffKeySorter|r: Gather announcement sent.")
+            elseif IsInRaid() then
+                print("|cff00ccffKeySorter|r: Only raid leader/assistants can send gather announcements.")
+            else
+                print("|cff00ccffKeySorter|r: Must be in a raid to send gather announcements.")
+            end
+        end,
+    }
+
     ---------------------------------------------------------------------------
     -- Content area (fills space to the right of sidebar)
     ---------------------------------------------------------------------------
@@ -124,7 +140,19 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     -- Tab switching
     ---------------------------------------------------------------------------
+    local aboutCreated = false
+    local settingsCreated = false
+
     local function SetTabInternal(tab)
+        -- Lazy-create About and Settings on first visit (needs actual frame width for text wrap)
+        if tab == "about" and not aboutCreated then
+            aboutCreated = true
+            KS.CreateAboutView(aboutContent)
+        elseif tab == "settings" and not settingsCreated then
+            settingsCreated = true
+            KS.CreateSettingsView(settingsContent)
+        end
+
         for name, content in pairs(tabContents) do
             if name == tab then content:Show() else content:Hide() end
         end
@@ -158,8 +186,8 @@ function KS.CreateMainFrame()
 
     KS.CreateRosterView(rosterContent)
     KS.CreateGroupView(groupContent)
-    KS.CreateAboutView(aboutContent)
-    KS.CreateSettingsView(settingsContent)
+    -- About and Settings are lazy-loaded on first tab visit
+    -- (text wrapping needs actual frame width, which is 0 at init)
 
     -- Resize handle
     f:SetResizable(true)

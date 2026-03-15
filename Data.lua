@@ -74,6 +74,7 @@ KS.SWAP_THRESHOLD = 50
 KS.SORT_MODES = {
     { key = "matched",  label = "Skill Matched", desc = "Group players of similar skill level together." },
     { key = "balanced", label = "Balanced",       desc = "Distribute skill levels evenly across groups (snake draft)." },
+    { key = "gear",     label = "Gear",           desc = "Group players by item level (useful early in a season)." },
 }
 KS.sortMode = "matched"
 

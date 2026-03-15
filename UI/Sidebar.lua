@@ -60,6 +60,8 @@ function KS.CreateSidebar(parent)
         { key = "roster",   icon = KS.MEDIA.IconRoster,   label = "Roster" },
         { key = "groups",   icon = KS.MEDIA.IconGroups,   label = "Groups" },
         "SEPARATOR",
+        { key = "gather",   icon = KS.MEDIA.IconGather,   label = "Gather", action = true },
+        "SEPARATOR",
         { key = "settings", icon = KS.MEDIA.IconSettings, label = "Settings" },
         { key = "about",    icon = KS.MEDIA.IconAbout,    label = "About" },
     }
@@ -155,10 +157,17 @@ function KS.CreateSidebar(parent)
 
         -- Click
         btn:SetScript("OnClick", function(self)
-            if KS.SetTab then
+            if self._action then
+                -- Action button: fire callback, don't switch tabs
+                if KS.SidebarActions and KS.SidebarActions[self._key] then
+                    KS.SidebarActions[self._key]()
+                end
+            elseif KS.SetTab then
                 KS.SetTab(self._key)
             end
         end)
+
+        btn._action = item.action
 
         return btn
     end
@@ -173,7 +182,9 @@ function KS.CreateSidebar(parent)
             navY = navY - 10
         else
             local btn = CreateNavButton(item, navY)
-            buttons[item.key] = btn
+            if not item.action then
+                buttons[item.key] = btn  -- only tab buttons are tracked for selection
+            end
             navY = navY - BUTTON_HEIGHT - 6
         end
     end

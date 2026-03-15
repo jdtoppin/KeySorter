@@ -36,14 +36,26 @@ function KS.SortGroups()
         end
     end
 
-    -- Step 2: Sort each pool by score descending, then ilvl as tiebreaker
-    local function byScore(a, b)
-        if a.score ~= b.score then return a.score > b.score end
-        return (a.ilvl or 0) > (b.ilvl or 0)
+    -- Step 2: Sort each pool by the selected criteria
+    local sortFunc
+    if KS.sortMode == "gear" then
+        -- Sort by ilvl descending, score as tiebreaker. Unknown ilvl (0) sorts last.
+        sortFunc = function(a, b)
+            local aIlvl = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
+            local bIlvl = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
+            if aIlvl ~= bIlvl then return aIlvl > bIlvl end
+            return a.score > b.score
+        end
+    else
+        -- Sort by score descending, ilvl as tiebreaker
+        sortFunc = function(a, b)
+            if a.score ~= b.score then return a.score > b.score end
+            return (a.ilvl or 0) > (b.ilvl or 0)
+        end
     end
-    table.sort(tanks, byScore)
-    table.sort(healers, byScore)
-    table.sort(dps, byScore)
+    table.sort(tanks, sortFunc)
+    table.sort(healers, sortFunc)
+    table.sort(dps, sortFunc)
 
     -- Step 3: Determine number of new groups from unlocked players
     local numNewGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
@@ -75,7 +87,7 @@ function KS.SortGroups()
     local dpsToAssign = math.min(#dps, dpsNeeded)
 
     if KS.sortMode == "balanced" then
-        -- Snake draft: 1→N, N→1, repeat — distributes skill evenly across groups
+        -- Snake draft: 1→N, N→1, repeat — distributes evenly across groups
         local groupIdx = 1
         local direction = 1
         for i = 1, dpsToAssign do
