@@ -1,8 +1,8 @@
-## Interface: 120000
+## Interface: 120001
 ## Title: KeySorter
 ## Notes: Automatically sort raid members into balanced M+ groups
 ## Author: Josiah Toppin
-## Version: 1.6.0
+## Version: 2.0.0
 ## SavedVariables: KeySorterDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 
@@ -12,6 +12,7 @@ Core.lua
 Scanner.lua
 Sorter.lua
 Comm.lua
+UI/Sidebar.lua
 UI/MainFrame.lua
 UI/RosterView.lua
 UI/GroupView.lua

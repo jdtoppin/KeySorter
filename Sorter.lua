@@ -176,6 +176,70 @@ function KS.GroupHasUtility(group, utilKey)
     return false
 end
 
+---------------------------------------------------------------------------
+-- Reconcile groups after roster changes (join/leave)
+-- Removes members no longer in roster, adds new members to unassigned.
+-- Does NOT re-sort — preserves existing group assignments.
+---------------------------------------------------------------------------
+function KS.ReconcileGroups()
+    if #KS.groups == 0 then return end
+
+    -- Build lookup of current roster names
+    local rosterNames = {}
+    for _, member in ipairs(KS.roster) do
+        rosterNames[member.name] = member
+    end
+
+    -- Build lookup of all assigned member names
+    local assignedNames = {}
+
+    -- Remove departed members from groups, update member data for those still present
+    for _, group in ipairs(KS.groups) do
+        if group.tank then
+            if rosterNames[group.tank.name] then
+                group.tank = rosterNames[group.tank.name]
+                assignedNames[group.tank.name] = true
+            else
+                group.tank = nil
+            end
+        end
+        if group.healer then
+            if rosterNames[group.healer.name] then
+                group.healer = rosterNames[group.healer.name]
+                assignedNames[group.healer.name] = true
+            else
+                group.healer = nil
+            end
+        end
+        local newDps = {}
+        for _, d in ipairs(group.dps) do
+            if rosterNames[d.name] then
+                table.insert(newDps, rosterNames[d.name])
+                assignedNames[d.name] = true
+            end
+        end
+        group.dps = newDps
+    end
+
+    -- Also update unassigned — remove departed, keep existing
+    local newUnassigned = {}
+    for _, member in ipairs(KS.unassigned) do
+        if rosterNames[member.name] then
+            table.insert(newUnassigned, rosterNames[member.name])
+            assignedNames[member.name] = true
+        end
+    end
+
+    -- Add new roster members (not in any group or unassigned) to unassigned
+    for _, member in ipairs(KS.roster) do
+        if not assignedNames[member.name] then
+            table.insert(newUnassigned, member)
+        end
+    end
+
+    KS.unassigned = newUnassigned
+end
+
 function KS.GroupScore(group)
     local total = 0
     local count = 0

@@ -11,9 +11,10 @@ local scrollFrame, scrollChild
 local previousTab       -- which tab to return to
 local contentWidgets = {} -- widgets created inside scrollChild (cleared on refresh)
 
-local SECTION_GAP = 16
+local SECTION_GAP = 12
 local LINE_HEIGHT = 18
-local LABEL_WIDTH = 140
+local LABEL_WIDTH = 120
+local COL_MIN_WIDTH = 280  -- minimum width before falling back to single column
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -73,16 +74,18 @@ local function ClearContent()
     wipe(contentWidgets)
 end
 
-local function AddSectionHeader(yOffset, text)
+-- xBase: horizontal offset for the column (0 for left, half-width for right)
+local function AddSectionHeader(yOffset, text, xBase, colWidth)
+    xBase = xBase or 0
     local fs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    fs:SetPoint("TOPLEFT", 0, yOffset)
+    fs:SetPoint("TOPLEFT", xBase, yOffset)
     fs:SetText(text)
     fs:SetTextColor(0, 0.8, 1)
     table.insert(contentWidgets, fs)
 
     local line = scrollChild:CreateTexture(nil, "ARTWORK")
-    line:SetPoint("TOPLEFT", 0, yOffset - 14)
-    line:SetPoint("RIGHT", -8, 0)
+    line:SetPoint("TOPLEFT", xBase, yOffset - 14)
+    line:SetWidth(colWidth or 300)
     line:SetHeight(1)
     line:SetColorTexture(0.25, 0.25, 0.25, 1)
     table.insert(contentWidgets, line)
@@ -90,9 +93,10 @@ local function AddSectionHeader(yOffset, text)
     return yOffset - 20
 end
 
-local function AddLabelValue(yOffset, label, value, valueR, valueG, valueB)
+local function AddLabelValue(yOffset, label, value, valueR, valueG, valueB, xBase)
+    xBase = xBase or 0
     local lbl = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    lbl:SetPoint("TOPLEFT", 8, yOffset)
+    lbl:SetPoint("TOPLEFT", xBase + 8, yOffset)
     lbl:SetWidth(LABEL_WIDTH)
     lbl:SetJustifyH("LEFT")
     lbl:SetText(label)
@@ -100,7 +104,7 @@ local function AddLabelValue(yOffset, label, value, valueR, valueG, valueB)
     table.insert(contentWidgets, lbl)
 
     local val = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    val:SetPoint("TOPLEFT", LABEL_WIDTH + 8, yOffset)
+    val:SetPoint("TOPLEFT", xBase + LABEL_WIDTH + 8, yOffset)
     val:SetJustifyH("LEFT")
     val:SetText(value)
     val:SetTextColor(valueR or 1, valueG or 1, valueB or 1)
@@ -111,164 +115,148 @@ end
 
 local function BuildContent(member)
     ClearContent()
-    local y = 0
 
-    ---------------------------------------------------------------------------
-    -- Header: Name, Class, Role
-    ---------------------------------------------------------------------------
-    y = AddSectionHeader(y, "Overview")
+    -- Determine if we have room for two columns
+    local totalWidth = scrollChild:GetWidth()
+    if totalWidth < 1 then totalWidth = 500 end
+    local twoCol = totalWidth >= (COL_MIN_WIDTH * 2)
+    local colWidth = twoCol and math.floor(totalWidth / 2) or totalWidth
+    local leftX = 0
+    local rightX = twoCol and colWidth or 0
+
+    -- =====================================================================
+    -- LEFT COLUMN: Overview, Utilities, Key Thresholds
+    -- =====================================================================
+    local yL = 0
+
+    yL = AddSectionHeader(yL, "Overview", leftX, colWidth - 16)
     local cr, cg, cb = GetClassColor(member.classFile)
-    y = AddLabelValue(y, "Name", member.name, cr, cg, cb)
+    yL = AddLabelValue(yL, "Name", member.name, cr, cg, cb, leftX)
 
     local classDisplay = member.classFile and member.classFile:sub(1, 1) .. member.classFile:sub(2):lower() or "Unknown"
-    -- Clean up multi-word class names
-    classDisplay = classDisplay:gsub("deathknight", "Death Knight"):gsub("demonhunter", "Demon Hunter")
     if member.classFile == "DEATHKNIGHT" then classDisplay = "Death Knight"
     elseif member.classFile == "DEMONHUNTER" then classDisplay = "Demon Hunter" end
-    y = AddLabelValue(y, "Class", classDisplay, cr, cg, cb)
+    yL = AddLabelValue(yL, "Class", classDisplay, cr, cg, cb, leftX)
+    yL = AddLabelValue(yL, "Role", ROLE_LABELS[member.role] or member.role or "Unknown", nil, nil, nil, leftX)
 
-    local roleAtlas = KS.ROLE_ICONS[member.role]
-    y = AddLabelValue(y, "Role", ROLE_LABELS[member.role] or member.role or "Unknown")
-
-    -- Score
     local sr, sg, sb = GetScoreColor(member.score)
-    y = AddLabelValue(y, "M+ Score", tostring(member.score), sr, sg, sb)
+    yL = AddLabelValue(yL, "M+ Score", tostring(member.score), sr, sg, sb, leftX)
 
-    -- Previous season score
     if member.previousScore and member.previousScore > 0 then
         local pr, pg, pb = GetScoreColor(member.previousScore)
-        y = AddLabelValue(y, "Previous Season", tostring(member.previousScore), pr, pg, pb)
+        yL = AddLabelValue(yL, "Prev Season", tostring(member.previousScore), pr, pg, pb, leftX)
     end
 
-    -- Item level
     if member.ilvl and member.ilvl > 0 then
         local ir, ig, ib = GetIlvlColor(member.ilvl)
-        y = AddLabelValue(y, "Item Level", tostring(member.ilvl), ir, ig, ib)
+        yL = AddLabelValue(yL, "Item Level", tostring(member.ilvl), ir, ig, ib, leftX)
     else
-        y = AddLabelValue(y, "Item Level", "Unknown", 0.5, 0.5, 0.5)
+        yL = AddLabelValue(yL, "Item Level", "Unknown", 0.5, 0.5, 0.5, leftX)
     end
 
-    y = AddLabelValue(y, "Avg Key Level", format("%.1f", member.avgKeyLevel or 0))
-    y = AddLabelValue(y, "Data Source", member.dataSource == "raiderio" and "Raider.IO" or member.dataSource == "blizzard" and "Blizzard API" or "None", 0.5, 0.5, 0.5)
+    yL = AddLabelValue(yL, "Avg Key Level", format("%.1f", member.avgKeyLevel or 0), nil, nil, nil, leftX)
+    yL = AddLabelValue(yL, "Data Source", member.dataSource == "raiderio" and "Raider.IO" or member.dataSource == "blizzard" and "Blizzard API" or "None", 0.5, 0.5, 0.5, leftX)
 
-    ---------------------------------------------------------------------------
     -- Utilities
-    ---------------------------------------------------------------------------
-    y = y - SECTION_GAP
-    y = AddSectionHeader(y, "Utilities")
+    yL = yL - SECTION_GAP
+    yL = AddSectionHeader(yL, "Utilities", leftX, colWidth - 16)
     local function utilColor(has) return has and 0 or 0.5, has and 0.8 or 0.5, has and 0 or 0.5 end
-    y = AddLabelValue(y, "Battle Rez", member.hasBrez and "Yes" or "No", utilColor(member.hasBrez))
-    y = AddLabelValue(y, "Bloodlust", member.hasLust and "Yes" or "No", utilColor(member.hasLust))
-    y = AddLabelValue(y, "Shroud", member.hasShroud and "Yes" or "No", utilColor(member.hasShroud))
+    yL = AddLabelValue(yL, "Battle Rez", member.hasBrez and "Yes" or "No", utilColor(member.hasBrez), leftX)
+    yL = AddLabelValue(yL, "Bloodlust", member.hasLust and "Yes" or "No", utilColor(member.hasLust), leftX)
+    yL = AddLabelValue(yL, "Shroud", member.hasShroud and "Yes" or "No", utilColor(member.hasShroud), leftX)
 
-    ---------------------------------------------------------------------------
-    -- Key Threshold Runs (Raider.IO data)
-    ---------------------------------------------------------------------------
+    -- Key Thresholds
     if member.dataSource == "raiderio" or (member.keystoneFivePlus and member.keystoneFivePlus > 0) then
-        y = y - SECTION_GAP
-        y = AddSectionHeader(y, "Timed Key Thresholds")
-        y = AddLabelValue(y, "+5 Timed", tostring(member.keystoneFivePlus or 0))
-        y = AddLabelValue(y, "+10 Timed", tostring(member.keystoneTenPlus or 0))
-        y = AddLabelValue(y, "+15 Timed", tostring(member.keystoneFifteenPlus or 0))
-        y = AddLabelValue(y, "+20 Timed", tostring(member.keystoneTwentyPlus or 0))
+        yL = yL - SECTION_GAP
+        yL = AddSectionHeader(yL, "Timed Key Thresholds", leftX, colWidth - 16)
+        yL = AddLabelValue(yL, "+5 Timed", tostring(member.keystoneFivePlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+10 Timed", tostring(member.keystoneTenPlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+15 Timed", tostring(member.keystoneFifteenPlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+20 Timed", tostring(member.keystoneTwentyPlus or 0), nil, nil, nil, leftX)
     end
 
-    ---------------------------------------------------------------------------
-    -- Run Summary
-    ---------------------------------------------------------------------------
-    y = y - SECTION_GAP
-    y = AddSectionHeader(y, "Run Summary")
-    y = AddLabelValue(y, "Total Runs", tostring(member.numRuns or 0))
-    y = AddLabelValue(y, "Timed Runs", tostring(member.numTimed or 0), 0, 0.8, 0)
-    y = AddLabelValue(y, "Untimed Runs", tostring(member.numUntimed or 0), 0.8, 0, 0)
+    -- =====================================================================
+    -- RIGHT COLUMN (or below left if single column): Run Summary, Dungeons
+    -- =====================================================================
+    local yR = twoCol and 0 or (yL - SECTION_GAP)
+    local cX = rightX  -- column x offset
+
+    yR = AddSectionHeader(yR, "Run Summary", cX, colWidth - 16)
+    yR = AddLabelValue(yR, "Total Runs", tostring(member.numRuns or 0), nil, nil, nil, cX)
+    yR = AddLabelValue(yR, "Timed Runs", tostring(member.numTimed or 0), 0, 0.8, 0, cX)
+    yR = AddLabelValue(yR, "Untimed Runs", tostring(member.numUntimed or 0), 0.8, 0, 0, cX)
 
     ---------------------------------------------------------------------------
-    -- Dungeon Breakdown
+    -- Dungeon Breakdown (right column continued)
     ---------------------------------------------------------------------------
     if member.runs and next(member.runs) then
-        y = y - SECTION_GAP
-        y = AddSectionHeader(y, "Dungeon Breakdown")
+        yR = yR - SECTION_GAP
+        yR = AddSectionHeader(yR, "Dungeon Breakdown", cX, colWidth - 16)
+
+        -- Dungeon table column offsets (relative to cX)
+        local dNameX = cX + 8
+        local dLevelX = cX + 150
+        local dStatusX = cX + 200
+        local dScoreX = cX + 260
 
         -- Column headers
-        local hdrName = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hdrName:SetPoint("TOPLEFT", 8, y)
-        hdrName:SetWidth(180)
-        hdrName:SetJustifyH("LEFT")
-        hdrName:SetText("Dungeon")
-        hdrName:SetTextColor(0.5, 0.5, 0.5)
-        table.insert(contentWidgets, hdrName)
+        local function AddDungeonHeader(label, xPos, w)
+            local fs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            fs:SetPoint("TOPLEFT", xPos, yR)
+            fs:SetWidth(w)
+            fs:SetJustifyH("CENTER")
+            fs:SetText(label)
+            fs:SetTextColor(0.5, 0.5, 0.5)
+            table.insert(contentWidgets, fs)
+        end
 
-        local hdrLevel = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hdrLevel:SetPoint("TOPLEFT", 196, y)
-        hdrLevel:SetWidth(50)
-        hdrLevel:SetJustifyH("CENTER")
-        hdrLevel:SetText("Level")
-        hdrLevel:SetTextColor(0.5, 0.5, 0.5)
-        table.insert(contentWidgets, hdrLevel)
+        local nameHdr = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameHdr:SetPoint("TOPLEFT", dNameX, yR)
+        nameHdr:SetWidth(140)
+        nameHdr:SetJustifyH("LEFT")
+        nameHdr:SetText("Dungeon")
+        nameHdr:SetTextColor(0.5, 0.5, 0.5)
+        table.insert(contentWidgets, nameHdr)
+        AddDungeonHeader("Level", dLevelX, 46)
+        AddDungeonHeader("Status", dStatusX, 56)
+        AddDungeonHeader("Score", dScoreX, 46)
+        yR = yR - LINE_HEIGHT
 
-        local hdrStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hdrStatus:SetPoint("TOPLEFT", 252, y)
-        hdrStatus:SetWidth(60)
-        hdrStatus:SetJustifyH("CENTER")
-        hdrStatus:SetText("Status")
-        hdrStatus:SetTextColor(0.5, 0.5, 0.5)
-        table.insert(contentWidgets, hdrStatus)
-
-        local hdrScore = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hdrScore:SetPoint("TOPLEFT", 318, y)
-        hdrScore:SetWidth(50)
-        hdrScore:SetJustifyH("CENTER")
-        hdrScore:SetText("Score")
-        hdrScore:SetTextColor(0.5, 0.5, 0.5)
-        table.insert(contentWidgets, hdrScore)
-
-        y = y - LINE_HEIGHT
-
-        -- Show season dungeons first in order
         local shown = {}
+        local rowIdx = 0
         local function AddDungeonRow(mapID, run)
             local name = GetDungeonName(mapID)
+            rowIdx = rowIdx + 1
 
-            -- Alternating row bg
             local rowBg = scrollChild:CreateTexture(nil, "BACKGROUND")
-            rowBg:SetPoint("TOPLEFT", 4, y + 1)
-            rowBg:SetPoint("RIGHT", -8, 0)
+            rowBg:SetPoint("TOPLEFT", cX + 4, yR + 1)
+            rowBg:SetWidth(colWidth - 12)
             rowBg:SetHeight(LINE_HEIGHT)
-            local idx = #contentWidgets
-            if idx % 2 == 0 then
-                rowBg:SetColorTexture(1, 1, 1, 0.03)
-            else
-                rowBg:SetColorTexture(1, 1, 1, 0.05)
-            end
+            rowBg:SetColorTexture(1, 1, 1, rowIdx % 2 == 0 and 0.03 or 0.05)
             table.insert(contentWidgets, rowBg)
 
             local nameFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            nameFs:SetPoint("TOPLEFT", 8, y)
-            nameFs:SetWidth(180)
+            nameFs:SetPoint("TOPLEFT", dNameX, yR)
+            nameFs:SetWidth(140)
             nameFs:SetJustifyH("LEFT")
             nameFs:SetText(name)
             nameFs:SetTextColor(0.85, 0.85, 0.85)
             table.insert(contentWidgets, nameFs)
 
             local levelFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            levelFs:SetPoint("TOPLEFT", 196, y)
-            levelFs:SetWidth(50)
+            levelFs:SetPoint("TOPLEFT", dLevelX, yR)
+            levelFs:SetWidth(46)
             levelFs:SetJustifyH("CENTER")
             levelFs:SetText("+" .. run.level)
             table.insert(contentWidgets, levelFs)
 
             local statusFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            statusFs:SetPoint("TOPLEFT", 252, y)
-            statusFs:SetWidth(60)
+            statusFs:SetPoint("TOPLEFT", dStatusX, yR)
+            statusFs:SetWidth(56)
             statusFs:SetJustifyH("CENTER")
             if run.timed then
-                if run.chests and run.chests > 1 then
-                    statusFs:SetText(format("+%d", run.chests))
-                    statusFs:SetTextColor(0, 1, 0.5)
-                else
-                    statusFs:SetText("Timed")
-                    statusFs:SetTextColor(0, 0.8, 0)
-                end
+                statusFs:SetText("Timed")
+                statusFs:SetTextColor(0, 0.8, 0)
             else
                 statusFs:SetText("Untimed")
                 statusFs:SetTextColor(0.8, 0, 0)
@@ -276,8 +264,8 @@ local function BuildContent(member)
             table.insert(contentWidgets, statusFs)
 
             local scoreFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            scoreFs:SetPoint("TOPLEFT", 318, y)
-            scoreFs:SetWidth(50)
+            scoreFs:SetPoint("TOPLEFT", dScoreX, yR)
+            scoreFs:SetWidth(46)
             scoreFs:SetJustifyH("CENTER")
             if run.score then
                 scoreFs:SetText(tostring(run.score))
@@ -288,7 +276,7 @@ local function BuildContent(member)
             end
             table.insert(contentWidgets, scoreFs)
 
-            y = y - LINE_HEIGHT
+            yR = yR - LINE_HEIGHT
         end
 
         for _, mapID in ipairs(KS.DUNGEON_IDS) do
@@ -298,7 +286,6 @@ local function BuildContent(member)
                 AddDungeonRow(mapID, run)
             end
         end
-        -- Any runs not in the season list
         for mapID, run in pairs(member.runs) do
             if not shown[mapID] then
                 AddDungeonRow(mapID, run)
@@ -308,37 +295,39 @@ local function BuildContent(member)
         -- Dungeons with no data
         for _, mapID in ipairs(KS.DUNGEON_IDS) do
             if not member.runs[mapID] then
+                rowIdx = rowIdx + 1
                 local name = GetDungeonName(mapID)
                 local nameFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                nameFs:SetPoint("TOPLEFT", 8, y)
-                nameFs:SetWidth(180)
+                nameFs:SetPoint("TOPLEFT", dNameX, yR)
+                nameFs:SetWidth(140)
                 nameFs:SetJustifyH("LEFT")
                 nameFs:SetText(name)
                 nameFs:SetTextColor(0.35, 0.35, 0.35)
                 table.insert(contentWidgets, nameFs)
 
                 local noData = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-                noData:SetPoint("TOPLEFT", 196, y)
+                noData:SetPoint("TOPLEFT", dLevelX, yR)
                 noData:SetText("No data")
                 noData:SetTextColor(0.35, 0.35, 0.35)
                 table.insert(contentWidgets, noData)
 
-                y = y - LINE_HEIGHT
+                yR = yR - LINE_HEIGHT
             end
         end
     else
-        y = y - SECTION_GAP
-        y = AddSectionHeader(y, "Dungeon Breakdown")
+        yR = yR - SECTION_GAP
+        yR = AddSectionHeader(yR, "Dungeon Breakdown", cX, colWidth - 16)
         local noRuns = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        noRuns:SetPoint("TOPLEFT", 8, y)
+        noRuns:SetPoint("TOPLEFT", cX + 8, yR)
         noRuns:SetText("No dungeon runs recorded this season.")
         noRuns:SetTextColor(0.5, 0.5, 0.5)
         table.insert(contentWidgets, noRuns)
-        y = y - LINE_HEIGHT
+        yR = yR - LINE_HEIGHT
     end
 
-    -- Total height
-    scrollChild:SetHeight(math.abs(y) + SECTION_GAP)
+    -- Total height is the deeper of the two columns
+    local totalY = math.min(yL, yR)
+    scrollChild:SetHeight(math.abs(totalY) + SECTION_GAP)
 end
 
 ---------------------------------------------------------------------------
@@ -348,16 +337,18 @@ local function EnsureDetailFrame()
     if detailFrame then return end
 
     detailFrame = CreateFrame("Frame", nil, KS.mainFrame, "BackdropTemplate")
-    detailFrame:SetPoint("TOPLEFT", 1, -29)
-    detailFrame:SetPoint("BOTTOMRIGHT", -1, 1)
+    detailFrame:SetPoint("TOPLEFT", KS.contentArea, "TOPLEFT", 0, 0)
+    detailFrame:SetPoint("BOTTOMRIGHT", KS.mainFrame, "BOTTOMRIGHT", -1, 1)
     detailFrame:SetFrameLevel(KS.mainFrame:GetFrameLevel() + 10)
-    detailFrame:SetBackdrop(KS.BACKDROP_PANEL)
+    detailFrame:SetBackdrop(KS.BACKDROP)
     detailFrame:SetBackdropColor(0.08, 0.08, 0.08, 1)
     detailFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    detailFrame:EnableMouse(true)  -- Block clicks from reaching frames behind
     detailFrame:Hide()
 
     -- Back button
     local backBtn = KS.CreateButton(detailFrame, "< Back", "widget", 60, 22)
+    backBtn:SetAnimatedHighlight(true)
     backBtn:SetPoint("TOPLEFT", 8, -6)
     backBtn:SetOnClick(function()
         KS.HideCharacterDetail()
@@ -390,6 +381,7 @@ function KS.ShowCharacterDetail(member, fromTab)
     if not KS.mainFrame then return end
 
     GameTooltip:Hide()
+    KS.HideTooltip()
     EnsureDetailFrame()
 
     previousTab = fromTab or "roster"

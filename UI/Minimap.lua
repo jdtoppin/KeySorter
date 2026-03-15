@@ -1,7 +1,39 @@
 local addonName, KS = ...
 
 local BUTTON_SIZE = 31
-local MINIMAP_RADIUS = 80
+
+-- Calculate edge position for both circular and square minimaps
+local function GetMinimapEdgePosition(angle)
+    local rad = math.rad(angle)
+    local cos, sin = math.cos(rad), math.sin(rad)
+
+    -- Get minimap dimensions (half-size)
+    local hw = Minimap:GetWidth() / 2
+    local hh = Minimap:GetHeight() / 2
+
+    -- Check if minimap is square (GetMaskTexture or shape detection)
+    local isSquare = GetMinimapShape and GetMinimapShape() ~= "ROUND"
+
+    if isSquare then
+        -- For square/rectangular minimaps: clamp to the rectangle edge
+        -- Find where the angle ray intersects the rectangle boundary
+        local x, y
+        if math.abs(cos) * hh > math.abs(sin) * hw then
+            -- Hits left or right edge
+            x = (cos > 0) and hw or -hw
+            y = x * sin / cos
+        else
+            -- Hits top or bottom edge
+            y = (sin > 0) and hh or -hh
+            x = y * cos / sin
+        end
+        return x, y
+    else
+        -- Circular minimap: use the smaller dimension as radius
+        local radius = math.min(hw, hh)
+        return cos * radius, sin * radius
+    end
+end
 
 function KS.CreateMinimapButton()
     local btn = CreateFrame("Button", "KeySorterMinimapButton", Minimap)
@@ -44,21 +76,20 @@ function KS.CreateMinimapButton()
 
     -- Tooltip
     btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine("KeySorter", 0, 0.8, 1)
-        GameTooltip:AddLine("|cffccccccLeft-click|r toggle window", 0.8, 0.8, 0.8)
-        GameTooltip:AddLine("|cffccccccRight-click|r about", 0.8, 0.8, 0.8)
-        GameTooltip:Show()
+        KS.ShowTooltip(self, "ANCHOR_LEFT", {
+            "KeySorter",
+            {"|cffccccccLeft-click|r toggle window", 0.8, 0.8, 0.8},
+            {"|cffccccccRight-click|r about", 0.8, 0.8, 0.8},
+        })
     end)
     btn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
+        KS.HideTooltip()
     end)
 
-    -- Position around minimap
+    -- Position around minimap edge (works with circular and square minimaps)
     local function UpdatePosition()
-        local angle = math.rad(KeySorterDB.minimapPos or 225)
-        local x = math.cos(angle) * MINIMAP_RADIUS
-        local y = math.sin(angle) * MINIMAP_RADIUS
+        local angle = KeySorterDB.minimapPos or 225
+        local x, y = GetMinimapEdgePosition(angle)
         btn:ClearAllPoints()
         btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
     end
@@ -72,11 +103,9 @@ function KS.CreateMinimapButton()
             cx, cy = cx / scale, cy / scale
             local angle = math.deg(math.atan2(cy - my, cx - mx))
             KeySorterDB.minimapPos = angle
+            local x, y = GetMinimapEdgePosition(angle)
             self:ClearAllPoints()
-            local rad = math.rad(angle)
-            self:SetPoint("CENTER", Minimap, "CENTER",
-                math.cos(rad) * MINIMAP_RADIUS,
-                math.sin(rad) * MINIMAP_RADIUS)
+            self:SetPoint("CENTER", Minimap, "CENTER", x, y)
         end)
     end)
 
