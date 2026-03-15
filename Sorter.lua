@@ -11,13 +11,14 @@ function KS.SortGroups()
     -- Collect locked groups and their members (by name for matching)
     local lockedGroups = {}
     local lockedNames = {}
+    local lockedCount = 0
     for i, group in ipairs(KS.groups) do
         if group.locked then
             table.insert(lockedGroups, { index = i, group = group })
-            if group.tank then lockedNames[group.tank.name] = true end
-            if group.healer then lockedNames[group.healer.name] = true end
+            if group.tank then lockedNames[group.tank.name] = true; lockedCount = lockedCount + 1 end
+            if group.healer then lockedNames[group.healer.name] = true; lockedCount = lockedCount + 1 end
             for _, d in ipairs(group.dps) do
-                lockedNames[d.name] = true
+                lockedNames[d.name] = true; lockedCount = lockedCount + 1
             end
         end
     end
@@ -36,10 +37,11 @@ function KS.SortGroups()
         end
     end
 
+    local unlocked = #tanks + #healers + #dps
+
     -- Step 2: Sort each pool by the selected criteria
     local sortFunc
     if KS.sortMode == "gear" then
-        -- Sort by ilvl descending, score as tiebreaker. Unknown ilvl (0) sorts last.
         sortFunc = function(a, b)
             local aIlvl = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
             local bIlvl = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
@@ -47,7 +49,6 @@ function KS.SortGroups()
             return a.score > b.score
         end
     else
-        -- Sort by score descending, ilvl as tiebreaker
         sortFunc = function(a, b)
             if a.score ~= b.score then return a.score > b.score end
             return (a.ilvl or 0) > (b.ilvl or 0)
@@ -57,87 +58,85 @@ function KS.SortGroups()
     table.sort(healers, sortFunc)
     table.sort(dps, sortFunc)
 
-    -- Step 3: Determine number of new groups from unlocked players
-    local numNewGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
+    -- Step 3: Determine total groups needed based on total player count
+    -- WoW raid subgroups hold 5 — create enough groups for everyone
+    local totalPlayers = lockedCount + unlocked
+    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
+    -- At minimum, enough for locked groups
+    totalGroupsNeeded = math.max(totalGroupsNeeded, #lockedGroups)
 
-    if numNewGroups == 0 and #lockedGroups == 0 then
-        wipe(KS.groups)
-        for _, t in ipairs(tanks) do table.insert(KS.unassigned, t) end
-        for _, h in ipairs(healers) do table.insert(KS.unassigned, h) end
-        for _, d in ipairs(dps) do table.insert(KS.unassigned, d) end
-        print("|cff00ccffKeySorter|r: Not enough players to form a complete group.")
-        if KS.UpdateGroupView then KS.UpdateGroupView() end
-        return
-    end
+    -- Number of complete groups we can form (1T+1H+3D)
+    local numCompleteGroups = math.floor(math.min(#tanks, #healers, #dps / 3))
+    -- Total new group slots (complete + incomplete/empty)
+    local numNewSlots = totalGroupsNeeded - #lockedGroups
 
-    -- Build new groups from unlocked players
+    -- Build all new groups
     local newGroups = {}
-    for i = 1, numNewGroups do
+    for i = 1, numNewSlots do
         newGroups[i] = { tank = nil, healer = nil, dps = {} }
     end
 
-    -- Step 4: Assign tanks and healers (same for both modes)
-    for i = 1, numNewGroups do
+    -- Step 4: Fill complete groups first (1T+1H+3D)
+    for i = 1, math.min(numCompleteGroups, numNewSlots) do
         newGroups[i].tank = tanks[i]
         newGroups[i].healer = healers[i]
     end
 
-    -- DPS: fill 3 per group using the selected sort mode
-    local dpsNeeded = numNewGroups * 3
+    local dpsNeeded = math.min(numCompleteGroups, numNewSlots) * 3
     local dpsToAssign = math.min(#dps, dpsNeeded)
 
-    if KS.sortMode == "balanced" then
-        -- Snake draft: 1→N, N→1, repeat — distributes evenly across groups
+    if KS.sortMode == "balanced" and numCompleteGroups > 0 then
         local groupIdx = 1
         local direction = 1
+        local maxG = math.min(numCompleteGroups, numNewSlots)
         for i = 1, dpsToAssign do
             table.insert(newGroups[groupIdx].dps, dps[i])
-            if (direction == 1 and groupIdx == numNewGroups) or (direction == -1 and groupIdx == 1) then
+            if (direction == 1 and groupIdx == maxG) or (direction == -1 and groupIdx == 1) then
                 direction = direction * -1
             else
                 groupIdx = groupIdx + direction
             end
         end
     else
-        -- Skill matched: top 3 DPS to group 1, next 3 to group 2, etc.
         for i = 1, dpsToAssign do
             local groupIdx = math.ceil(i / 3)
-            table.insert(newGroups[groupIdx].dps, dps[i])
+            if groupIdx <= numNewSlots then
+                table.insert(newGroups[groupIdx].dps, dps[i])
+            end
         end
     end
 
-    -- Step 4b: Form incomplete groups from extras (max 5 per group)
+    -- Step 5: Distribute remaining players into remaining group slots (up to 5 each)
     local extraTanks = {}
-    for i = numNewGroups + 1, #tanks do table.insert(extraTanks, tanks[i]) end
+    for i = math.min(numCompleteGroups, numNewSlots) + 1, #tanks do table.insert(extraTanks, tanks[i]) end
     local extraHealers = {}
-    for i = numNewGroups + 1, #healers do table.insert(extraHealers, healers[i]) end
+    for i = math.min(numCompleteGroups, numNewSlots) + 1, #healers do table.insert(extraHealers, healers[i]) end
     local extraDps = {}
     for i = dpsToAssign + 1, #dps do table.insert(extraDps, dps[i]) end
 
-    -- Build incomplete groups from extras (fill up to 5 each)
-    local incompleteGroups = {}
-    while #extraTanks > 0 or #extraHealers > 0 or #extraDps > 0 do
-        local group = { tank = nil, healer = nil, dps = {} }
+    -- Fill remaining group slots with extras
+    for i = math.min(numCompleteGroups, numNewSlots) + 1, numNewSlots do
         local count = 0
-
-        if #extraTanks > 0 then
-            group.tank = table.remove(extraTanks, 1)
+        if #extraTanks > 0 and count < 5 then
+            newGroups[i].tank = table.remove(extraTanks, 1)
             count = count + 1
         end
-        if #extraHealers > 0 then
-            group.healer = table.remove(extraHealers, 1)
+        if #extraHealers > 0 and count < 5 then
+            newGroups[i].healer = table.remove(extraHealers, 1)
             count = count + 1
         end
         while #extraDps > 0 and count < 5 do
-            table.insert(group.dps, table.remove(extraDps, 1))
+            table.insert(newGroups[i].dps, table.remove(extraDps, 1))
             count = count + 1
         end
-
-        table.insert(incompleteGroups, group)
     end
 
-    -- Merge: locked groups + complete groups into KS.groups
-    -- Incomplete groups stored separately for display after unassigned
+    -- Any remaining extras that didn't fit (shouldn't happen with correct math)
+    for _, t in ipairs(extraTanks) do table.insert(KS.unassigned, t) end
+    for _, h in ipairs(extraHealers) do table.insert(KS.unassigned, h) end
+    for _, d in ipairs(extraDps) do table.insert(KS.unassigned, d) end
+
+    -- Merge: locked groups at their original positions, new groups fill the rest
     wipe(KS.groups)
     wipe(KS.incompleteGroups)
 
@@ -145,19 +144,36 @@ function KS.SortGroups()
     for _, lg in ipairs(lockedGroups) do
         KS.groups[lg.index] = lg.group
     end
-    -- Fill remaining slots with complete groups only
+
+    -- Separate complete from incomplete new groups
+    local completeNew = {}
+    local incompleteNew = {}
+    for _, g in ipairs(newGroups) do
+        local count = 0
+        if g.tank then count = count + 1 end
+        if g.healer then count = count + 1 end
+        count = count + #g.dps
+        if count == 5 and g.tank and g.healer and #g.dps == 3 then
+            table.insert(completeNew, g)
+        elseif count > 0 then
+            table.insert(incompleteNew, g)
+        end
+        -- Empty groups (count == 0) are dropped
+    end
+
+    -- Fill KS.groups with complete groups
     local newIdx = 1
-    for i = 1, #lockedGroups + numNewGroups do
+    for i = 1, totalGroupsNeeded do
         if not KS.groups[i] then
-            if newIdx <= numNewGroups then
-                KS.groups[i] = newGroups[newIdx]
+            if newIdx <= #completeNew then
+                KS.groups[i] = completeNew[newIdx]
                 newIdx = newIdx + 1
             end
         end
     end
 
-    -- Store incomplete groups separately
-    for _, g in ipairs(incompleteGroups) do
+    -- Store incomplete groups separately (displayed after unassigned)
+    for _, g in ipairs(incompleteNew) do
         table.insert(KS.incompleteGroups, g)
     end
 
