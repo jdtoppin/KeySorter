@@ -279,6 +279,7 @@ local function CreateRow(parent, index)
             fs:SetJustifyH("CENTER")
         else
             fs:SetWidth(col.width)
+            fs:SetJustifyH("LEFT")
         end
         row.texts[ci] = fs
     end
@@ -499,12 +500,13 @@ function KS.CreateRosterView(parent)
                 if fs then
                     fs:ClearAllPoints()
                     fs:SetPoint("LEFT", x, 0)
+                    fs:SetWidth(col.align == "RIGHT" and (col.width - 4) or col.width)
                     if col.align == "RIGHT" then
-                        fs:SetWidth(col.width - 4)
                         fs:SetJustifyH("RIGHT")
                     elseif col.align == "CENTER" then
-                        fs:SetWidth(col.width)
                         fs:SetJustifyH("CENTER")
+                    else
+                        fs:SetJustifyH("LEFT")
                     end
                 end
             end
