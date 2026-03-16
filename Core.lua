@@ -137,6 +137,9 @@ end)
 function KS.IsPermitted()
     if KS.previewMode then return true end
     if not IsInRaid() then return true end
+    -- Direct leader check (always reliable)
+    if UnitIsGroupLeader("player") then return true end
+    -- Check assistant rank via raid roster info
     local raidIdx = UnitInRaid("player")
     if not raidIdx then return true end
     local _, rank = GetRaidRosterInfo(raidIdx + 1)
