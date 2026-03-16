@@ -106,6 +106,22 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
+        -- If we left the group, update immediately (no throttle needed)
+        if GetNumGroupMembers() == 0 then
+            if KS._scanTimer then KS._scanTimer:Cancel(); KS._scanTimer = nil end
+            KS._helloSent = false
+            wipe(KS.roster)
+            wipe(KS.groups)
+            wipe(KS.incompleteGroups)
+            wipe(KS.unassigned)
+            if KS.UpdateRosterView then KS.UpdateRosterView() end
+            if KS.UpdateGroupView then KS.UpdateGroupView() end
+            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+            if KS.mainFrame and KS.mainFrame:IsShown() then
+                KS.UpdatePermissionState()
+            end
+            return
+        end
         -- Throttle: if a scan is already pending, let it run.
         -- Short delay so unit data settles after rapid roster changes.
         if KS._scanTimer then return end
