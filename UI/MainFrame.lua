@@ -151,42 +151,74 @@ function KS.CreateMainFrame()
     KS.sortButtonGroups = sortBtnGroups
     KS.SetTooltip(sortBtnGroups, "ANCHOR_BOTTOM", {"Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible."})
 
-    -- Pulsing glow on sort button when unassigned players exist
-    -- Use a separate frame behind the button for the glow (BORDER layer on button is covered by backdrop)
-    local glowBg = CreateFrame("Frame", nil, sortBtnGroups)
-    glowBg:SetPoint("TOPLEFT", -4, 4)
-    glowBg:SetPoint("BOTTOMRIGHT", 4, -4)
-    glowBg:SetFrameLevel(sortBtnGroups:GetFrameLevel() - 1)
-    local sortGlow = glowBg:CreateTexture(nil, "ARTWORK")
-    sortGlow:SetAllPoints()
-    sortGlow:SetColorTexture(0, 0.8, 1, 0)
-    glowBg:Hide()
+    -- Pulsing glow border on sort button when unassigned players exist
+    -- Four edge textures that pulse cyan around the button
+    local glowEdges = {}
+    local function CreateGlowEdge(point1, rel, point2, w, h)
+        local t = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+        t:SetColorTexture(0, 0.8, 1, 0)
+        t:SetPoint(point1, sortBtnGroups, rel, 0, 0)
+        t:SetSize(w, h)
+        t:Hide()
+        return t
+    end
+    -- Top, Bottom, Left, Right edges (2px thick, extending slightly beyond the button)
+    glowEdges.top = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.top:SetPoint("TOPLEFT", -2, 2)
+    glowEdges.top:SetPoint("TOPRIGHT", 2, 2)
+    glowEdges.top:SetHeight(2)
+    glowEdges.top:SetColorTexture(0, 0.8, 1, 0)
+
+    glowEdges.bottom = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.bottom:SetPoint("BOTTOMLEFT", -2, -2)
+    glowEdges.bottom:SetPoint("BOTTOMRIGHT", 2, -2)
+    glowEdges.bottom:SetHeight(2)
+    glowEdges.bottom:SetColorTexture(0, 0.8, 1, 0)
+
+    glowEdges.left = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.left:SetPoint("TOPLEFT", -2, 2)
+    glowEdges.left:SetPoint("BOTTOMLEFT", -2, -2)
+    glowEdges.left:SetWidth(2)
+    glowEdges.left:SetColorTexture(0, 0.8, 1, 0)
+
+    glowEdges.right = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.right:SetPoint("TOPRIGHT", 2, 2)
+    glowEdges.right:SetPoint("BOTTOMRIGHT", 2, -2)
+    glowEdges.right:SetWidth(2)
+    glowEdges.right:SetColorTexture(0, 0.8, 1, 0)
+
     local glowElapsed = 0
     local glowActive = false
 
-    -- Use a separate child frame for glow animation to avoid OnUpdate conflict
-    -- with the button's AnimateButtonHighlight
+    -- Separate child frame for glow animation OnUpdate
     local glowFrame = CreateFrame("Frame", nil, sortBtnGroups)
+
+    local function ShowGlowEdges(show)
+        for _, t in pairs(glowEdges) do
+            if show then t:Show() else t:Hide() end
+        end
+    end
 
     function KS.UpdateSortGlow()
         -- Glow when there are unassigned players OR when roster has players but no groups yet
         if #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0) then
             if not glowActive then
                 glowActive = true
-                glowBg:Show()
+                ShowGlowEdges(true)
                 glowElapsed = 0
                 glowFrame:SetScript("OnUpdate", function(self, dt)
                     if not glowActive then return end
                     glowElapsed = glowElapsed + dt
-                    -- Pulse alpha between 0.1 and 0.4
-                    local alpha = 0.25 + 0.15 * math.sin(glowElapsed * 3)
-                    sortGlow:SetVertexColor(0, 0.8, 1, alpha)
+                    local alpha = 0.4 + 0.4 * math.sin(glowElapsed * 3)
+                    for _, t in pairs(glowEdges) do
+                        t:SetVertexColor(0, 0.8, 1, alpha)
+                    end
                 end)
             end
         else
             if glowActive then
                 glowActive = false
-                glowBg:Hide()
+                ShowGlowEdges(false)
                 glowFrame:SetScript("OnUpdate", nil)
             end
         end
