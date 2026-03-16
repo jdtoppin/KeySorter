@@ -410,7 +410,6 @@ local function BuildContent(member)
         nameHdr:SetTextColor(0.5, 0.5, 0.5)
         table.insert(contentWidgets, nameHdr)
         AddDungeonHeader("Level", dLevelX, 46)
-        AddDungeonHeader("Status", dStatusX, 56)
         AddDungeonHeader("Score", dScoreX, 46)
         yR = yR - LINE_HEIGHT
 
@@ -440,20 +439,13 @@ local function BuildContent(member)
             levelFs:SetWidth(46)
             levelFs:SetJustifyH("CENTER")
             levelFs:SetText("+" .. run.level)
-            table.insert(contentWidgets, levelFs)
-
-            local statusFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            statusFs:SetPoint("TOPLEFT", dStatusX, yR)
-            statusFs:SetWidth(56)
-            statusFs:SetJustifyH("CENTER")
+            -- Green = timed, Red = not timed at this level
             if run.timed then
-                statusFs:SetText("Timed")
-                statusFs:SetTextColor(0, 0.8, 0)
+                levelFs:SetTextColor(0, 0.8, 0)
             else
-                statusFs:SetText("Untimed")
-                statusFs:SetTextColor(0.8, 0, 0)
+                levelFs:SetTextColor(0.8, 0, 0)
             end
-            table.insert(contentWidgets, statusFs)
+            table.insert(contentWidgets, levelFs)
 
             local scoreFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
             scoreFs:SetPoint("TOPLEFT", dScoreX, yR)
