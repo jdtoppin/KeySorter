@@ -220,9 +220,10 @@ function KS.CreateSidebar(parent)
     if buttons["groups"] then
         local groupsBtn = buttons["groups"]
         local notifDot = groupsBtn:CreateTexture(nil, "OVERLAY")
-        notifDot:SetSize(8, 8)
-        notifDot:SetPoint("TOPRIGHT", -2, -2)
-        notifDot:SetColorTexture(0, 0.8, 1, 0.8)
+        notifDot:SetSize(6, 6)
+        notifDot:SetPoint("RIGHT", groupsBtn._label, "RIGHT", 10, 0)
+        notifDot:SetTexture("Interface/COMMON/Indicator-Green")
+        notifDot:SetVertexColor(0, 0.8, 1, 1)
         notifDot:Hide()
 
         local notifFrame = CreateFrame("Frame", nil, groupsBtn)
