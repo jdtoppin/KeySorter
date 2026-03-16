@@ -143,6 +143,134 @@ function KS.SortGroups()
 end
 
 ---------------------------------------------------------------------------
+-- Sort Unassigned: place unassigned players into empty group slots
+-- Does NOT touch existing groups (locked or unlocked).
+-- Forms new complete groups from unassigned if possible,
+-- remaining go back to unassigned.
+---------------------------------------------------------------------------
+function KS.SortUnassigned()
+    if #KS.unassigned == 0 then return end
+
+    -- Separate unassigned by role
+    local tanks, healers, dps = {}, {}, {}
+    for _, member in ipairs(KS.unassigned) do
+        if member.role == "TANK" then
+            table.insert(tanks, member)
+        elseif member.role == "HEALER" then
+            table.insert(healers, member)
+        else
+            table.insert(dps, member)
+        end
+    end
+
+    -- Sort by the selected criteria
+    local sortFunc
+    if KS.sortMode == "gear" then
+        sortFunc = function(a, b)
+            local ai = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
+            local bi = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
+            if ai ~= bi then return ai > bi end
+            return a.score > b.score
+        end
+    else
+        sortFunc = function(a, b)
+            if a.score ~= b.score then return a.score > b.score end
+            return (a.ilvl or 0) > (b.ilvl or 0)
+        end
+    end
+    table.sort(tanks, sortFunc)
+    table.sort(healers, sortFunc)
+    table.sort(dps, sortFunc)
+
+    -- Form complete groups from unassigned (1T+1H+3D)
+    local numNew = math.floor(math.min(#tanks, #healers, #dps / 3))
+    local newGroups = {}
+    for i = 1, numNew do
+        local group = { tank = tanks[i], healer = healers[i], dps = {} }
+        -- DPS assignment
+        if KS.sortMode == "balanced" and numNew > 1 then
+            -- Filled via snake draft below
+        else
+            for d = 1, 3 do
+                group.dps[d] = dps[(i - 1) * 3 + d]
+            end
+        end
+        table.insert(newGroups, group)
+    end
+
+    -- Balanced DPS snake draft
+    if KS.sortMode == "balanced" and numNew > 1 then
+        local dpsToAssign = numNew * 3
+        local groupIdx = 1
+        local direction = 1
+        for di = 1, math.min(#dps, dpsToAssign) do
+            table.insert(newGroups[groupIdx].dps, dps[di])
+            if (direction == 1 and groupIdx == numNew) or (direction == -1 and groupIdx == 1) then
+                direction = direction * -1
+            else
+                groupIdx = groupIdx + direction
+            end
+        end
+    end
+
+    -- Add new groups to KS.groups
+    for _, g in ipairs(newGroups) do
+        table.insert(KS.groups, g)
+    end
+
+    -- Remaining unassigned
+    wipe(KS.unassigned)
+    for i = numNew + 1, #tanks do table.insert(KS.unassigned, tanks[i]) end
+    for i = numNew + 1, #healers do table.insert(KS.unassigned, healers[i]) end
+    local dpsUsed = numNew * 3
+    for i = dpsUsed + 1, #dps do table.insert(KS.unassigned, dps[i]) end
+
+    -- Update empty group cards
+    local totalPlayers = #KS.roster
+    local totalGroupsNeeded = 0
+    if totalPlayers >= 2 then
+        totalGroupsNeeded = 2
+        if totalPlayers > 10 then
+            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
+        end
+    elseif totalPlayers == 1 then
+        totalGroupsNeeded = 1
+    end
+    local filledGroups = #KS.groups
+    local nonEmptyIncomplete = 0
+    if KS.incompleteGroups then
+        for _, g in ipairs(KS.incompleteGroups) do
+            local count = 0
+            if g.tank then count = count + 1 end
+            if g.healer then count = count + 1 end
+            count = count + #g.dps
+            if count > 0 then nonEmptyIncomplete = nonEmptyIncomplete + 1 end
+        end
+    end
+    local emptyNeeded = math.max(0, totalGroupsNeeded - filledGroups - nonEmptyIncomplete)
+    local newIncomplete = {}
+    if KS.incompleteGroups then
+        for _, g in ipairs(KS.incompleteGroups) do
+            local count = 0
+            if g.tank then count = count + 1 end
+            if g.healer then count = count + 1 end
+            count = count + #g.dps
+            if count > 0 then table.insert(newIncomplete, g) end
+        end
+    end
+    for i = 1, emptyNeeded do
+        table.insert(newIncomplete, { tank = nil, healer = nil, dps = {} })
+    end
+    KS.incompleteGroups = newIncomplete
+
+    -- Utility balancing on new groups
+    KS.BalanceUtilities()
+
+    local numTotal = #KS.groups
+    print(format("|cff00ccffKeySorter|r: Sorted %d new group(s) from unassigned, %d total, %d still unassigned.", numNew, numTotal, #KS.unassigned))
+end
+
+---------------------------------------------------------------------------
 -- Utility balancing: try to give each group brez and lust coverage
 -- by swapping DPS between groups, preferring swaps between adjacent
 -- groups (similar skill tiers) to minimize skill disruption.

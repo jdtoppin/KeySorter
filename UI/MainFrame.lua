@@ -127,12 +127,13 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     -- Groups toolbar controls: Sort, Switch
     ---------------------------------------------------------------------------
-    local sortBtnGroups = KS.CreateButton(groupsToolbar, "Sort", "accent", 52, 22)
-    sortBtnGroups:SetPoint("LEFT", 6, 0)
-    sortBtnGroups:SetAnimatedHighlight(true)
-    sortBtnGroups:SetBorderHighlightColor(0, 0.8, 1, 1)
-    sortBtnGroups:SetTextHighlightColor(1, 1, 1)
-    sortBtnGroups:SetOnClick(function()
+    -- Sort All: re-sorts everyone not in a locked group
+    local sortAllBtn = KS.CreateButton(groupsToolbar, "Sort All", "accent", 58, 22)
+    sortAllBtn:SetPoint("LEFT", 6, 0)
+    sortAllBtn:SetAnimatedHighlight(true)
+    sortAllBtn:SetBorderHighlightColor(0, 0.8, 1, 1)
+    sortAllBtn:SetTextHighlightColor(1, 1, 1)
+    sortAllBtn:SetOnClick(function()
         if not KS.previewMode and #KS.roster == 0 then
             KS.ScanRoster()
         end
@@ -144,48 +145,68 @@ function KS.CreateMainFrame()
         if not KS.previewMode and KS.IsPermitted() then
             KS.ApplyGroups()
         end
-        -- Acknowledge: dismiss glow until new players join
         KS._sortAcknowledged = true
         KS._lastSortedRosterCount = #KS.roster
         if KS.UpdateGroupView then KS.UpdateGroupView() end
         if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
     end)
-    KS.sortButtonGroups = sortBtnGroups
-    KS.SetTooltip(sortBtnGroups, "ANCHOR_BOTTOM", {"Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible."})
+    KS.sortButtonGroups = sortAllBtn
+    KS.SetTooltip(sortAllBtn, "ANCHOR_BOTTOM", {"Sort All", "Re-sorts all unlocked groups from scratch.", "Locked groups are preserved."})
+
+    -- Sort New: only places unassigned players into empty groups
+    local sortNewBtn = KS.CreateButton(groupsToolbar, "Sort New", "widget", 62, 22)
+    sortNewBtn:SetPoint("LEFT", sortAllBtn, "RIGHT", 4, 0)
+    sortNewBtn:SetAnimatedHighlight(true)
+    sortNewBtn:SetOnClick(function()
+        if #KS.unassigned == 0 then
+            print("|cff00ccffKeySorter|r: No unassigned players to sort.")
+            return
+        end
+        KS.SortUnassigned()
+        if not KS.previewMode and KS.IsPermitted() then
+            KS.ApplyGroups()
+        end
+        KS._sortAcknowledged = true
+        KS._lastSortedRosterCount = #KS.roster
+        if KS.UpdateGroupView then KS.UpdateGroupView() end
+        if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+        if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
+    end)
+    KS.SetTooltip(sortNewBtn, "ANCHOR_BOTTOM", {"Sort New", "Places unassigned players into empty group slots.", "Existing groups (locked or unlocked) are not changed."})
 
     -- Pulsing glow border on sort button when unassigned players exist
     -- Four edge textures that pulse cyan around the button
     local glowEdges = {}
     local function CreateGlowEdge(point1, rel, point2, w, h)
-        local t = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+        local t = sortAllBtn:CreateTexture(nil, "OVERLAY", nil, 7)
         t:SetColorTexture(0, 0.8, 1, 0)
-        t:SetPoint(point1, sortBtnGroups, rel, 0, 0)
+        t:SetPoint(point1, sortAllBtn, rel, 0, 0)
         t:SetSize(w, h)
         t:Hide()
         return t
     end
     -- Top, Bottom, Left, Right edges (2px thick, extending slightly beyond the button)
     -- Top and bottom span full width, left and right fit between them (no corner overlap)
-    glowEdges.top = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.top = sortAllBtn:CreateTexture(nil, "OVERLAY", nil, 7)
     glowEdges.top:SetPoint("TOPLEFT", -2, 2)
     glowEdges.top:SetPoint("TOPRIGHT", 2, 2)
     glowEdges.top:SetHeight(2)
     glowEdges.top:SetColorTexture(0, 0.8, 1, 0)
 
-    glowEdges.bottom = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.bottom = sortAllBtn:CreateTexture(nil, "OVERLAY", nil, 7)
     glowEdges.bottom:SetPoint("BOTTOMLEFT", -2, -2)
     glowEdges.bottom:SetPoint("BOTTOMRIGHT", 2, -2)
     glowEdges.bottom:SetHeight(2)
     glowEdges.bottom:SetColorTexture(0, 0.8, 1, 0)
 
-    glowEdges.left = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.left = sortAllBtn:CreateTexture(nil, "OVERLAY", nil, 7)
     glowEdges.left:SetPoint("TOPLEFT", -2, 0)
     glowEdges.left:SetPoint("BOTTOMLEFT", -2, 0)
     glowEdges.left:SetWidth(2)
     glowEdges.left:SetColorTexture(0, 0.8, 1, 0)
 
-    glowEdges.right = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
+    glowEdges.right = sortAllBtn:CreateTexture(nil, "OVERLAY", nil, 7)
     glowEdges.right:SetPoint("TOPRIGHT", 2, 0)
     glowEdges.right:SetPoint("BOTTOMRIGHT", 2, 0)
     glowEdges.right:SetWidth(2)
@@ -195,7 +216,7 @@ function KS.CreateMainFrame()
     local glowActive = false
 
     -- Separate child frame for glow animation OnUpdate
-    local glowFrame = CreateFrame("Frame", nil, sortBtnGroups)
+    local glowFrame = CreateFrame("Frame", nil, sortAllBtn)
 
     local function ShowGlowEdges(show)
         for _, t in pairs(glowEdges) do
@@ -239,7 +260,7 @@ function KS.CreateMainFrame()
         table.insert(switchOptions, { text = mode.label, value = mode.key })
     end
     local sortSwitch = KS.CreateSwitch(groupsToolbar, 240, 22, switchOptions)
-    sortSwitch:SetPoint("LEFT", sortBtnGroups, "RIGHT", 8, 0)
+    sortSwitch:SetPoint("LEFT", sortNewBtn, "RIGHT", 8, 0)
     sortSwitch:SetSelectedValue(KS.sortMode)
     sortSwitch:SetOnSelect(function(value)
         KS.sortMode = value
