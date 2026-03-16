@@ -86,6 +86,14 @@ function KS.HandleCommMessage(msg, sender)
         local version = parts[2] or "?"
         local role = parts[3] or "member"
         print(format("|cff00ccffKeySorter|r: Synced with %s (v%s, %s). Addon communication active.", sender, version, role))
+        -- Check if their version is newer than ours
+        local myVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or "0"
+        if version ~= "?" and version > myVersion then
+            if not KS._updateNotified then
+                KS._updateNotified = true
+                print(format("|cff00ccffKeySorter|r: |cffff8800Update available!|r %s has v%s (you have v%s). Please update.", sender, version, myVersion))
+            end
+        end
         -- Send a hello back if we haven't already (so both sides see the sync)
         if not KS._helloSent then
             KS._helloSent = true
