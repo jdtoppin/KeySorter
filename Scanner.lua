@@ -80,8 +80,15 @@ local function ScanFromRaiderIO(unit, entry)
 
     entry.avgKeyLevel = numDungeons > 0 and (totalKeyLevel / numDungeons) or 0
 
-    -- Total runs from keystoneFivePlus (all timed keys at +5 or above)
-    entry.numRuns = entry.keystoneFivePlus or 0
+    -- Total timed runs: if these are brackets, sum them; if cumulative, keystoneFivePlus is the total
+    -- Use the larger of: keystoneFivePlus alone OR the sum of all brackets
+    local k5 = entry.keystoneFivePlus or 0
+    local k10 = entry.keystoneTenPlus or 0
+    local k15 = entry.keystoneFifteenPlus or 0
+    local k20 = entry.keystoneTwentyPlus or 0
+    local sumBrackets = k5 + k10 + k15 + k20
+    -- If sum > k5, they're separate brackets; if k5 >= sum, it's cumulative
+    entry.numRuns = math.max(k5, sumBrackets)
     entry.numTimed = entry.numRuns
     entry.numUntimed = 0
     entry.dataSource = "raiderio"
