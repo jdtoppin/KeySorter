@@ -47,6 +47,7 @@ KS.MEDIA = {
     IconWelcome  = MEDIA_PATH .. "IconWelcome",
     IconGather   = MEDIA_PATH .. "IconGather",
     Warning      = MEDIA_PATH .. "Warning",
+    CircleFilled = MEDIA_PATH .. "CircleFilled",
 }
 
 ---------------------------------------------------------------------------

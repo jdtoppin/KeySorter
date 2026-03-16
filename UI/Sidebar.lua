@@ -222,7 +222,7 @@ function KS.CreateSidebar(parent)
         local notifDot = groupsBtn:CreateTexture(nil, "OVERLAY")
         notifDot:SetSize(6, 6)
         notifDot:SetPoint("RIGHT", groupsBtn._label, "RIGHT", 10, 0)
-        notifDot:SetTexture("Interface/COMMON/Indicator-Green")
+        notifDot:SetTexture(KS.MEDIA.CircleFilled)
         notifDot:SetVertexColor(0, 0.8, 1, 1)
         notifDot:Hide()
 
