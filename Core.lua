@@ -106,6 +106,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
+            -- If already in a raid on load/reload, broadcast presence
+            if IsInRaid() then
+                C_Timer.After(3, function()
+                    if IsInRaid() and not KS._helloSent then
+                        KS._helloSent = true
+                        KS.SendHello()
+                    end
+                end)
+            end
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end

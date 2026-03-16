@@ -14,12 +14,14 @@ function KS.InitComm()
     commFrame:RegisterEvent("CHAT_MSG_ADDON")
     commFrame:SetScript("OnEvent", function(self, event, prefix, msg, channel, sender)
         if prefix ~= PREFIX then return end
-        if not KS.IsPermitted() then return end
         -- Don't process our own messages
-        if sender == UnitName("player") or sender == UnitName("player") .. "-" .. GetRealmName() then
+        local myName = UnitName("player")
+        if sender == myName or sender == myName .. "-" .. GetRealmName() then
             return
         end
-        KS.HandleCommMessage(msg, sender)
+        -- Strip realm from sender name for display
+        local shortSender = sender:match("^([^-]+)") or sender
+        KS.HandleCommMessage(msg, shortSender)
     end)
 end
 
@@ -84,8 +86,16 @@ function KS.HandleCommMessage(msg, sender)
         local version = parts[2] or "?"
         local role = parts[3] or "member"
         print(format("|cff00ccffKeySorter|r: Synced with %s (v%s, %s). Addon communication active.", sender, version, role))
+        -- Send a hello back if we haven't already (so both sides see the sync)
+        if not KS._helloSent then
+            KS._helloSent = true
+            KS.SendHello()
+        end
         return
     end
+
+    -- Permission gate: only leaders/assistants process group sync data
+    if not KS.IsPermitted() then return end
 
     if parts[1] ~= SYNC_MSG then return end
 
