@@ -852,11 +852,7 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
         end
     end)
 
-    -- Mouse wheel
-    container:EnableMouseWheel(true)
-    container:SetScript("OnMouseWheel", function(_, delta)
-        SetValueInternal(currentValue + delta * step)
-    end)
+    -- Mouse wheel disabled — drag and click only
 
     -- Initial layout
     trackFrame:SetScript("OnSizeChanged", function() UpdateVisuals() end)
