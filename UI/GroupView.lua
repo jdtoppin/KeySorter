@@ -300,6 +300,7 @@ local function StopDrag(line)
         C_Timer.After(0.35, function()
             KS.UpdateGroupView()
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+            if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
         end)
         KS.AutoSync()
     end

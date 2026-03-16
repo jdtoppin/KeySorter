@@ -117,6 +117,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             if KS.UpdateRosterView then KS.UpdateRosterView() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+            if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
             if KS.mainFrame and KS.mainFrame:IsShown() then
                 KS.UpdatePermissionState()
             end
@@ -141,6 +142,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KS.ReconcileGroups()
             if KS.UpdateGroupView then KS.UpdateGroupView() end
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+            if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
             if KS.mainFrame and KS.mainFrame:IsShown() then
                 KS.UpdatePermissionState()
             end

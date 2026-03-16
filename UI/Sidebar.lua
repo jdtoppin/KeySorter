@@ -216,6 +216,35 @@ function KS.CreateSidebar(parent)
         end
     end
 
+    -- Notification dot on Groups button (pulsing when sort needed)
+    if buttons["groups"] then
+        local groupsBtn = buttons["groups"]
+        local notifDot = groupsBtn:CreateTexture(nil, "OVERLAY")
+        notifDot:SetSize(8, 8)
+        notifDot:SetPoint("TOPRIGHT", -2, -2)
+        notifDot:SetColorTexture(0, 0.8, 1, 0.8)
+        notifDot:Hide()
+
+        local notifFrame = CreateFrame("Frame", nil, groupsBtn)
+        local notifElapsed = 0
+
+        function KS.UpdateSidebarNotification()
+            local needsSort = #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0)
+            if needsSort then
+                notifDot:Show()
+                notifElapsed = 0
+                notifFrame:SetScript("OnUpdate", function(self, dt)
+                    notifElapsed = notifElapsed + dt
+                    local alpha = 0.5 + 0.3 * math.sin(notifElapsed * 4)
+                    notifDot:SetVertexColor(0, 0.8, 1, alpha)
+                end)
+            else
+                notifDot:Hide()
+                notifFrame:SetScript("OnUpdate", nil)
+            end
+        end
+    end
+
     -- Deferred highlight fix (button widths aren't final until first layout)
     C_Timer.After(0, function()
         if selectedKey and buttons[selectedKey] then

@@ -146,6 +146,7 @@ function KS.CreateMainFrame()
         end
         if KS.UpdateGroupView then KS.UpdateGroupView() end
         if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+        if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
     end)
     KS.sortButtonGroups = sortBtnGroups
     KS.SetTooltip(sortBtnGroups, "ANCHOR_BOTTOM", {"Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible."})
