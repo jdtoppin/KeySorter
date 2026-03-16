@@ -113,9 +113,17 @@ function KS.SortGroups()
     end
 
     -- Create empty group cards based on total raid size
-    -- Total groups needed = ceil(totalPlayers / 5)
+    -- 2 groups minimum, then +1 at 11, 16, 21, 26, 31, 36
     local totalPlayers = #KS.roster
-    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
+    local totalGroupsNeeded = 0
+    if totalPlayers >= 2 then
+        totalGroupsNeeded = 2
+        if totalPlayers > 10 then
+            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
+        end
+    elseif totalPlayers == 1 then
+        totalGroupsNeeded = 1
+    end
     local filledGroups = #KS.groups
     local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - filledGroups)
     for i = 1, emptyGroupsNeeded do
@@ -259,9 +267,17 @@ function KS.ReconcileGroups()
     KS.unassigned = newUnassigned
 
     -- Update empty group cards based on total raid size
-    -- Groups appear at 5/10/15/20/25/30/35/40 player thresholds
+    -- 2 groups minimum when players exist, then +1 at 11, 16, 21, 26, 31, 36
     local totalPlayers = #KS.roster
-    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
+    local totalGroupsNeeded = 0
+    if totalPlayers >= 2 then
+        totalGroupsNeeded = 2
+        if totalPlayers > 10 then
+            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
+        end
+    elseif totalPlayers == 1 then
+        totalGroupsNeeded = 1
+    end
     local filledGroups = #KS.groups
 
     -- Count non-empty incomplete groups (ones with members dragged in)
