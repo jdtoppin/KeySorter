@@ -109,9 +109,9 @@ local function PassesFilter(member)
 end
 
 -- Use shared helpers from Data.lua
-local GetIlvlColor = function(ilvl) return KS.GetIlvlColor(ilvl) end
-local GetScoreColor = function(score) return KS.GetScoreColor(score) end
-local GetDungeonName = function(mapID) return KS.GetDungeonName(mapID) end
+local GetScoreColor = KS.GetScoreColor
+local GetIlvlColor = KS.GetIlvlColor
+local GetDungeonName = KS.GetDungeonName
 
 -- Build the shift-tooltip for a member's per-dungeon breakdown
 function KS.ShowMemberTooltip(row, member)
@@ -241,26 +241,27 @@ local function CreateRow(parent, index)
                 {"|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5},
             })
         end
+        self:SetScript("OnUpdate", function(s)
+            if not s:IsMouseOver() then return end
+            local shiftDown = IsShiftKeyDown()
+            if shiftDown and not s._shiftShown and s._member then
+                KS.ShowMemberTooltip(s, s._member)
+                s._shiftShown = true
+            elseif not shiftDown and s._shiftShown then
+                KS.HideTooltip()
+                s._shiftShown = false
+            end
+        end)
     end)
     row:SetScript("OnLeave", function(self)
         hoverTex:Hide()
         KS.HideTooltip()
         self._shiftShown = false
+        self:SetScript("OnUpdate", nil)
     end)
     row:SetScript("OnClick", function(self)
         if self._member then
             KS.ShowCharacterDetail(self._member, "roster")
-        end
-    end)
-    row:SetScript("OnUpdate", function(self)
-        if not self:IsMouseOver() then return end
-        local shiftDown = IsShiftKeyDown()
-        if shiftDown and not self._shiftShown and self._member then
-            KS.ShowMemberTooltip(self, self._member)
-            self._shiftShown = true
-        elseif not shiftDown and self._shiftShown then
-            KS.HideTooltip()
-            self._shiftShown = false
         end
     end)
 
@@ -361,6 +362,7 @@ function KS.CreateRosterView(parent)
         { text = "40+", value = 40 },
     })
     timedDD:SetSelected(0)
+    KS.SetTooltip(timedDD, "ANCHOR_BOTTOM", {"Timed Runs Filter", "Filters by total timed runs.", "Note: Run counts from Raider.IO include all brackets. Blizzard API only counts best-per-dungeon."})
     timedDD:SetOnSelect(function(value)
         timedFilter = value
         KS.UpdateRosterView()

@@ -454,7 +454,8 @@ function KS.GeneratePreviewData()
 
     -- Realistic role distribution (stable per player index):
     -- ~15% tanks, ~15% healers, ~70% DPS with some variance.
-    -- Uses deterministic seed so roles don't change when count changes.
+    -- Role distribution is deterministic via ROLE_PATTERN table.
+    -- Other values (class, score, ilvl) are randomized each generation.
     local ROLE_PATTERN = {
         "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER",     -- 1-5: perfect group
         "HEALER", "DAMAGER", "DAMAGER", "DAMAGER", "DAMAGER",  -- 6-10: short a tank

@@ -26,9 +26,9 @@ local function GetClassColor(classFile)
 end
 
 -- Use shared helpers from Data.lua
-local GetScoreColor = function(score) return KS.GetScoreColor(score) end
-local GetIlvlColor = function(ilvl) return KS.GetIlvlColor(ilvl) end
-local GetDungeonName = function(mapID) return KS.GetDungeonName(mapID) end
+local GetScoreColor = KS.GetScoreColor
+local GetIlvlColor = KS.GetIlvlColor
+local GetDungeonName = KS.GetDungeonName
 
 local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
 

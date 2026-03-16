@@ -11,14 +11,14 @@ KeySorter is a World of Warcraft addon that automatically sorts raid members int
 - **Core.lua** — Addon init, event handling, slash commands, SavedVariables, inspect queue for ilvl, preview mode data generation (uses real Raider.IO base score table for realistic correlations)
 - **Data.lua** — Constants: class utilities (brez/lust/shroud), score thresholds, dungeon IDs/names, ilvl color gradient, role icons, sort modes
 - **Scanner.lua** — Raid roster scanning. Uses Raider.IO addon data when available, falls back to `C_PlayerInfo.GetPlayerMythicPlusRatingSummary`. Auto-scans on GROUP_ROSTER_UPDATE
-- **Sorter.lua** — Group formation algorithm with two modes (skill matched / balanced snake draft). Respects locked groups. Utility balancing pass for brez/lust coverage. `ReconcileGroups()` handles roster changes without re-sorting
-- **Comm.lua** — Addon communication via `C_ChatInfo.SendAddonMessage` on RAID channel. Auto-syncs after sort and drag-and-drop. Prefix: "KeySorter"
+- **Sorter.lua** — Group formation algorithm with three modes (skill matched / balanced snake draft / gear). Respects locked groups. Utility balancing pass for brez/lust coverage. `ReconcileGroups()` handles roster changes without re-sorting
+- **Comm.lua** — Addon communication via `C_ChatInfo.SendAddonMessage` on RAID channel. Auto-syncs after sort and drag-and-drop. Guild version check and hello handshake on join. Prefix: "KeySorter"
 - **Widgets.lua** — UI widget library: BorderedFrame, Button (with animated highlight, text/border highlight colors), Dropdown (arrow icons, shared singleton list), Slider (fill bar, accent thumb), Switch (animated segmented toggle), CheckButton (icon toggle), ScrollFrame (5px thin cyan scrollbar), CloseButton, ResizeButton, custom Tooltip system
 - **UI/Sidebar.lua** — Sidebar navigation with gradient highlights, icon + label buttons, animated selection state
 - **UI/MainFrame.lua** — Main window with sidebar, content area, groups toolbar (Sort button, sort mode switch), fade in/out animation, ESC-to-close via OnKeyDown
 - **UI/RosterView.lua** — Scrollable roster with sortable columns (including role/utility), filter dropdowns, arrow TGA sort indicators
 - **UI/GroupView.lua** — Responsive group cards (reflow on resize) with drag-and-drop (styled cursor, source overlay, drop flash), lock toggle, inline BR/BL tags, per-group announce
-- **UI/CharacterDetail.lua** — Two-column overlay (overview/utilities left, runs/dungeons right), falls back to single column when narrow
+- **UI/CharacterDetail.lua** — Two-column overlay (overview/utilities/notes/alt linking left, runs/dungeons right), falls back to single column when narrow
 - **UI/Settings.lua** — Inline scrollable settings panel with UI Scale slider (0.5x-2.0x) and preview mode controls
 - **UI/About.lua** — Feature cards, sort logic explanation, slash commands table, credits
 - **UI/Minimap.lua** — Minimap button with support for both circular and square minimaps
@@ -28,7 +28,7 @@ KeySorter is a World of Warcraft addon that automatically sorts raid members int
 ## Key Patterns
 
 - Shared addon table: `local addonName, KS = ...` in every file
-- SavedVariables: `KeySorterDB` (window position, filter state, minimap position, ilvl cache, uiScale, sidebarCollapsed)
+- SavedVariables: `KeySorterDB` (window position, filter state, minimap position, ilvl cache, uiScale, notes, alts, knownChars, welcomeMsg, gatherMsg)
 - Permission gating: `KS.IsPermitted()` checks raid leader/assistant rank
 - Preview mode: `KS.previewMode` generates fake data with realistic score correlations for UI testing
 - Group data model: `KS.groups[i] = { tank, healer, dps = {}, locked }` and `KS.unassigned = {}`
