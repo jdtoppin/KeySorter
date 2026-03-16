@@ -133,13 +133,19 @@ function KS.CreateMainFrame()
     sortBtnGroups:SetBorderHighlightColor(0, 0.8, 1, 1)
     sortBtnGroups:SetTextHighlightColor(1, 1, 1)
     sortBtnGroups:SetOnClick(function()
-        if not KS.previewMode and #KS.roster == 0 then KS.ScanRoster() end
-        if #KS.roster > 0 then
-            KS.SortGroups()
-            if not KS.previewMode then KS.ApplyGroups() end
-            if KS.UpdateGroupView then KS.UpdateGroupView() end
-            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+        if not KS.previewMode and #KS.roster == 0 then
+            KS.ScanRoster()
         end
+        if #KS.roster == 0 then
+            print("|cff00ccffKeySorter|r: No roster data. Make sure you're in a group.")
+            return
+        end
+        KS.SortGroups()
+        if not KS.previewMode and KS.IsPermitted() then
+            KS.ApplyGroups()
+        end
+        if KS.UpdateGroupView then KS.UpdateGroupView() end
+        if KS.UpdateSortGlow then KS.UpdateSortGlow() end
     end)
     KS.sortButtonGroups = sortBtnGroups
     KS.SetTooltip(sortBtnGroups, "ANCHOR_BOTTOM", {"Sort Groups", "Sort players using the selected mode and move them into raid subgroups.", "1 tank, 1 healer, 3 DPS per group. BR/BL balanced where possible."})
@@ -225,14 +231,17 @@ function KS.CreateMainFrame()
         end
 
         if tab == "groups" then
-            -- Auto-sort if no groups exist yet
-            if #KS.groups == 0 then
+            -- Auto-sort if no groups or incomplete groups exist yet
+            local hasAnyGroups = #KS.groups > 0 or (#KS.incompleteGroups and #KS.incompleteGroups > 0)
+            if not hasAnyGroups then
                 if not KS.previewMode and #KS.roster == 0 then
                     KS.ScanRoster()
                 end
                 if #KS.roster > 0 then
                     KS.SortGroups()
-                    if not KS.previewMode then KS.ApplyGroups() end
+                    if not KS.previewMode and KS.IsPermitted() then
+                        KS.ApplyGroups()
+                    end
                 end
             end
             -- Always re-render groups view (data may have changed on another tab)

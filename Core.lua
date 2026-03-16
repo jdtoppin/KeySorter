@@ -152,9 +152,10 @@ function KS.IsPermitted()
 end
 
 function KS.UpdatePermissionState()
+    -- Sort button is always enabled (sorting is local).
+    -- Permission is checked when applying to raid subgroups or announcing.
     if not KS.mainFrame then return end
-    local permitted = KS.IsPermitted()
-    if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(permitted) end
+    if KS.sortButtonGroups then KS.sortButtonGroups:SetEnabled(true) end
 end
 
 local function EnsureMainFrame()
