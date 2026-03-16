@@ -159,18 +159,31 @@ function KS.HandleCommMessage(msg, sender)
     if KS.UpdateGroupView then KS.UpdateGroupView() end
 end
 
--- Broadcast presence to raid when joining
+-- Broadcast presence to raid and/or guild
 function KS.SendHello()
     if KS.previewMode then return end
-    if not IsInRaid() then return end
     local version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"
     local role = "member"
-    if UnitIsGroupLeader("player") then
-        role = "raid leader"
-    elseif KS.IsPermitted() then
-        role = "assistant"
+    if IsInRaid() then
+        if UnitIsGroupLeader("player") then
+            role = "raid leader"
+        elseif KS.IsPermitted() then
+            role = "assistant"
+        end
+        C_ChatInfo.SendAddonMessage(PREFIX, HELLO_MSG .. "|" .. version .. "|" .. role, "RAID")
     end
-    C_ChatInfo.SendAddonMessage(PREFIX, HELLO_MSG .. "|" .. version .. "|" .. role, "RAID")
+    -- Also broadcast on guild channel for version checking
+    if IsInGuild() then
+        C_ChatInfo.SendAddonMessage(PREFIX, HELLO_MSG .. "|" .. version .. "|guild member", "GUILD")
+    end
+end
+
+-- Guild-only version check on login
+function KS.SendGuildVersionCheck()
+    if KS.previewMode then return end
+    if not IsInGuild() then return end
+    local version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"
+    C_ChatInfo.SendAddonMessage(PREFIX, HELLO_MSG .. "|" .. version .. "|guild member", "GUILD")
 end
 
 -- Initialize comms on load
