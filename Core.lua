@@ -534,6 +534,7 @@ function KS.GeneratePreviewData()
             keystoneFifteenPlus = k15,
             keystoneTwentyPlus = k20,
             ilvl = ilvl,
+            level = (math.random() > 0.9) and math.random(80, 89) or 90, -- ~10% chance of sub-90 for testing
             raidIndex = i,
             hasBrez = KS.BREZ[classFile] or false,
             hasLust = KS.LUST[classFile] or false,

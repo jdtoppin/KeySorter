@@ -336,6 +336,7 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
         local tags = {}
         if member.hasBrez then table.insert(tags, "|cff00cc00BR|r") end
         if member.hasLust then table.insert(tags, "|cff00cc00BL|r") end
+        if member.hasShroud then table.insert(tags, "|cff8800ccSH|r") end
         if #tags > 0 then
             text = text .. " " .. table.concat(tags, " ")
         end

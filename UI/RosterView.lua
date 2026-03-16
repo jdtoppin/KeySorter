@@ -222,6 +222,13 @@ local function CreateRow(parent, index)
         highlight:SetColorTexture(1, 1, 1, 0.05)
     end
 
+    -- Sub-max-level warning background (shown per-member in UpdateRosterView)
+    local levelWarn = row:CreateTexture(nil, "BACKGROUND", nil, 0)
+    levelWarn:SetAllPoints()
+    levelWarn:SetColorTexture(0.6, 0.1, 0.1, 0.2)
+    levelWarn:Hide()
+    row._levelWarn = levelWarn
+
     -- Mouseover highlight
     local hoverTex = row:CreateTexture(nil, "BACKGROUND", nil, 1)
     hoverTex:SetAllPoints()
@@ -606,6 +613,15 @@ function KS.UpdateRosterView()
 
         -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
         row.texts[9]:SetText(GetUtilityString(member))
+
+        -- Highlight sub-max-level players (below 90 can't do M+)
+        if row._levelWarn then
+            if member.level and member.level > 0 and member.level < 90 then
+                row._levelWarn:Show()
+            else
+                row._levelWarn:Hide()
+            end
+        end
     end
 
     scrollChild:SetHeight(math.max(#filtered * ROW_HEIGHT, 1))

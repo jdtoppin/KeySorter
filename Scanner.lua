@@ -142,11 +142,14 @@ function KS.ScanUnit(unit, name, raidIndex)
         end
     end
 
+    local level = UnitLevel(unit) or 0
+
     local entry = {
         name = name,
         unit = unit,
         classFile = classFile,
         role = role,
+        level = level,
         score = 0,
         previousScore = 0,
         runs = {},
