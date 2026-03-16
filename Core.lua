@@ -224,6 +224,7 @@ function KS.ApplyGroups()
         return
     end
 
+    -- Apply complete groups
     for groupIdx, group in ipairs(KS.groups) do
         local members = {}
         if group.tank then table.insert(members, group.tank) end
@@ -239,6 +240,32 @@ function KS.ApplyGroups()
                         SetRaidSubgroup(ri, groupIdx)
                     end
                     break
+                end
+            end
+        end
+    end
+
+    -- Apply incomplete groups (continue numbering after complete groups)
+    if KS.incompleteGroups then
+        local baseIdx = #KS.groups
+        for i, group in ipairs(KS.incompleteGroups) do
+            local subgroupIdx = baseIdx + i
+            if subgroupIdx > 8 then break end -- WoW max 8 subgroups
+            local members = {}
+            if group.tank then table.insert(members, group.tank) end
+            if group.healer then table.insert(members, group.healer) end
+            for _, d in ipairs(group.dps) do table.insert(members, d) end
+
+            for _, member in ipairs(members) do
+                for ri = 1, GetNumGroupMembers() do
+                    local raidName = GetRaidRosterInfo(ri)
+                    if raidName and raidName == member.name then
+                        local _, _, currentGroup = GetRaidRosterInfo(ri)
+                        if currentGroup ~= subgroupIdx then
+                            SetRaidSubgroup(ri, subgroupIdx)
+                        end
+                        break
+                    end
                 end
             end
         end

@@ -288,6 +288,11 @@ local function StopDrag(line)
             for _, m in ipairs(cleaned) do table.insert(KS.unassigned, m) end
         end
 
+        -- Apply raid subgroup changes for the affected members
+        if not KS.previewMode and IsInRaid() and KS.IsPermitted() then
+            KS.ApplyGroups()
+        end
+
         -- Flash and rebuild
         FlashLine(src.sourceLine)
         FlashLine(target)
