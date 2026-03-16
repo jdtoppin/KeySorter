@@ -106,28 +106,33 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
-        KS.ScanRoster()
-        -- Broadcast presence when first joining a raid
-        if IsInRaid() and not KS._helloSent then
-            KS._helloSent = true
-            -- Delay slightly so raid comms are ready
-            C_Timer.After(2, function()
-                if IsInRaid() then KS.SendHello() end
-            end)
-        elseif not IsInRaid() then
-            KS._helloSent = false
-        end
-        -- Reconcile: remove leavers, add joiners to unassigned
-        if #KS.groups > 0 then
-            KS.ReconcileGroups()
-            if KS.UpdateGroupView then KS.UpdateGroupView() end
-        end
-        if KS.UpdateSortGlow then KS.UpdateSortGlow() end
-        if KS.mainFrame and KS.mainFrame:IsShown() then
-            KS.UpdatePermissionState()
-        end
-        -- Queue inspects for ilvl when members join
-        QueueAllMembers()
+        -- Debounce: multiple roster updates can fire in rapid succession
+        -- as players join. Delay scan so unit data is settled.
+        if KS._scanTimer then KS._scanTimer:Cancel() end
+        KS._scanTimer = C_Timer.NewTimer(0.5, function()
+            KS._scanTimer = nil
+            KS.ScanRoster()
+            -- Broadcast presence when first joining a raid
+            if IsInRaid() and not KS._helloSent then
+                KS._helloSent = true
+                C_Timer.After(2, function()
+                    if IsInRaid() then KS.SendHello() end
+                end)
+            elseif not IsInRaid() then
+                KS._helloSent = false
+            end
+            -- Reconcile: remove leavers, add joiners to unassigned
+            if #KS.groups > 0 then
+                KS.ReconcileGroups()
+                if KS.UpdateGroupView then KS.UpdateGroupView() end
+            end
+            if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+            if KS.mainFrame and KS.mainFrame:IsShown() then
+                KS.UpdatePermissionState()
+            end
+            -- Queue inspects for ilvl when members join
+            QueueAllMembers()
+        end)
     elseif event == "INSPECT_READY" then
         local guid = ...
         OnInspectReady(guid)

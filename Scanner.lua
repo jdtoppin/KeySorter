@@ -17,13 +17,12 @@ function KS.ScanRoster()
             if prefix == "party" and i == numMembers then
                 unit = "player"
             else
-                break -- shouldn't happen but be safe
+                break
             end
         end
-        local name = GetRaidRosterInfo(i)
-        if not name and prefix == "party" then
-            name = UnitName(unit)
-        end
+        -- Use UnitName for the name to stay consistent with the unit ID
+        -- (GetRaidRosterInfo can have different ordering during roster changes)
+        local name = UnitName(unit)
         if name and UnitIsConnected(unit) then
             KS.ScanUnit(unit, name, i)
         end
