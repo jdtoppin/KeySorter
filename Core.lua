@@ -106,10 +106,10 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
         if KS.previewMode then return end
-        -- Debounce: multiple roster updates can fire in rapid succession
-        -- as players join. Delay scan so unit data is settled.
-        if KS._scanTimer then KS._scanTimer:Cancel() end
-        KS._scanTimer = C_Timer.NewTimer(0.5, function()
+        -- Throttle: if a scan is already pending, let it run.
+        -- Short delay so unit data settles after rapid roster changes.
+        if KS._scanTimer then return end
+        KS._scanTimer = C_Timer.NewTimer(0.2, function()
             KS._scanTimer = nil
             KS.ScanRoster()
             -- Broadcast presence when first joining a raid
