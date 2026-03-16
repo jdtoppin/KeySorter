@@ -16,15 +16,14 @@ local rows = {}
 local headerTexts = {}  -- label FontStrings per column index
 
 local BASE_COLUMNS = {
-    { key = "name",        label = "Name",        baseWidth = 120, minWidth = 60, flex = true, align = "LEFT",   sortable = true },
-    { key = "role",        label = "Role",        baseWidth = 40,  minWidth = 30, align = "CENTER", sortable = true },
-    { key = "score",       label = "Score",       baseWidth = 62,  minWidth = 45, align = "RIGHT",  sortable = true },
-    { key = "ilvl",        label = "iLvl",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
-    { key = "avgKeyLevel", label = "Avg Key",     baseWidth = 76,  minWidth = 50, align = "RIGHT",  sortable = true },
-    { key = "numTimed",    label = "Timed",       baseWidth = 60,  minWidth = 42, align = "RIGHT",  sortable = true },
-    { key = "numUntimed",  label = "Untimed",     baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
-    { key = "numRuns",     label = "Total",       baseWidth = 56,  minWidth = 40, align = "RIGHT",  sortable = true },
-    { key = "utilityCount", label = "Utility",     baseWidth = 70,  minWidth = 50, align = "CENTER", sortable = true },
+    { key = "name",          label = "Name",        baseWidth = 120, minWidth = 60, flex = true, align = "LEFT",   sortable = true },
+    { key = "role",          label = "Role",        baseWidth = 40,  minWidth = 30, align = "CENTER", sortable = true },
+    { key = "score",         label = "S1 Score",    baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "previousScore", label = "S3 Score",    baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "ilvl",          label = "iLvl",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
+    { key = "avgKeyLevel",   label = "Avg Key",     baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "numRuns",       label = "Runs",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
+    { key = "utilityCount",  label = "Utility",     baseWidth = 70,  minWidth = 50, align = "CENTER", sortable = true },
 }
 
 -- Working column widths (recalculated on resize)
@@ -126,9 +125,10 @@ function KS.ShowMemberTooltip(row, member)
         table.insert(lines, member.name)
     end
 
-    -- Score / avg key / ilvl summary line
+    -- Score summary
     local ilvlStr = (member.ilvl and member.ilvl > 0) and format("  |  iLvl: %d", member.ilvl) or ""
-    table.insert(lines, {format("Score: %d  |  Avg Key: %.1f%s", member.score, member.avgKeyLevel, ilvlStr), 0.7, 0.7, 0.7})
+    local prevStr = (member.previousScore and member.previousScore > 0) and format("  |  S3: %d", member.previousScore) or ""
+    table.insert(lines, {format("S1: %d%s  |  Avg Key: %.1f%s", member.score, prevStr, member.avgKeyLevel, ilvlStr), 0.7, 0.7, 0.7})
     table.insert(lines, " ")
 
     -- Dungeon breakdown
@@ -146,13 +146,7 @@ function KS.ShowMemberTooltip(row, member)
                 table.insert(lines, {format("  %s", name), format("+%d  %s", run.level, timedStr)})
             end
         end
-        for mapID, run in pairs(member.runs) do
-            if not shown[mapID] then
-                local name = GetDungeonName(mapID)
-                local timedStr = run.timed and "|cff00cc00Timed|r" or "|cffcc0000Untimed|r"
-                table.insert(lines, {format("  %s", name), format("+%d  %s", run.level, timedStr)})
-            end
-        end
+        -- Only show S1 Midnight dungeons in tooltip
     end
 
     -- Utilities
@@ -596,33 +590,36 @@ function KS.UpdateRosterView()
             row.roleIcon:Hide()
         end
 
-        -- Score (colored by M+ rating)
-        local sr, sg, sb = GetScoreColor(member.score)
+        -- S1 Score (current season, colored by M+ rating)
+        local sr, sg, sb = KS.GetScoreColor(member.score)
         row.texts[3]:SetText(format("|cff%02x%02x%02x%d|r", sr * 255, sg * 255, sb * 255, member.score))
 
-        -- Item level (colored by quality gradient)
-        local ilvl = member.ilvl or 0
-        if ilvl > 0 then
-            local ir, ig, ib = GetIlvlColor(ilvl)
-            row.texts[4]:SetText(format("|cff%02x%02x%02x%d|r", ir * 255, ig * 255, ib * 255, ilvl))
+        -- S3 Score (previous season)
+        local prevScore = member.previousScore or 0
+        if prevScore > 0 then
+            local pr, pg, pb = KS.GetScoreColor(prevScore)
+            row.texts[4]:SetText(format("|cff%02x%02x%02x%d|r", pr * 255, pg * 255, pb * 255, prevScore))
         else
             row.texts[4]:SetText("|cff666666—|r")
         end
 
-        -- Average key level across all dungeons
-        row.texts[5]:SetText(format("%.1f", member.avgKeyLevel))
+        -- Item level (colored by quality gradient)
+        local ilvl = member.ilvl or 0
+        if ilvl > 0 then
+            local ir, ig, ib = KS.GetIlvlColor(ilvl)
+            row.texts[5]:SetText(format("|cff%02x%02x%02x%d|r", ir * 255, ig * 255, ib * 255, ilvl))
+        else
+            row.texts[5]:SetText("|cff666666—|r")
+        end
 
-        -- Timed runs
-        row.texts[6]:SetText("|cff00cc00" .. tostring(member.numTimed or 0) .. "|r")
+        -- Average key level
+        row.texts[6]:SetText(format("%.1f", member.avgKeyLevel))
 
-        -- Untimed runs
-        row.texts[7]:SetText("|cffcc0000" .. tostring(member.numUntimed or 0) .. "|r")
-
-        -- Total runs
-        row.texts[8]:SetText(tostring(member.numRuns))
+        -- Total runs (derived from keystoneFivePlus or numRuns)
+        row.texts[7]:SetText(tostring(member.numRuns or 0))
 
         -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
-        row.texts[9]:SetText(GetUtilityString(member))
+        row.texts[8]:SetText(GetUtilityString(member))
 
         -- Highlight sub-max-level players (below 90 can't do M+)
         if row._levelWarn then

@@ -109,11 +109,11 @@ local function BuildContent(member)
     yL = AddLabelValue(yL, "Role", ROLE_LABELS[member.role] or member.role or "Unknown", nil, nil, nil, leftX)
 
     local sr, sg, sb = GetScoreColor(member.score)
-    yL = AddLabelValue(yL, "M+ Score", tostring(member.score), sr, sg, sb, leftX)
+    yL = AddLabelValue(yL, "S1 Score", tostring(member.score), sr, sg, sb, leftX)
 
     if member.previousScore and member.previousScore > 0 then
         local pr, pg, pb = GetScoreColor(member.previousScore)
-        yL = AddLabelValue(yL, "Prev Season", tostring(member.previousScore), pr, pg, pb, leftX)
+        yL = AddLabelValue(yL, "S3 Score", tostring(member.previousScore), pr, pg, pb, leftX)
     end
 
     if member.ilvl and member.ilvl > 0 then
@@ -478,11 +478,7 @@ local function BuildContent(member)
                 AddDungeonRow(mapID, run)
             end
         end
-        for mapID, run in pairs(member.runs) do
-            if not shown[mapID] then
-                AddDungeonRow(mapID, run)
-            end
-        end
+        -- Only show S1 Midnight dungeons (skip any TWW S3 dungeon runs)
 
         -- Dungeons with no data
         for _, mapID in ipairs(KS.DUNGEON_IDS) do
