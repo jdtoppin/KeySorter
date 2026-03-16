@@ -57,8 +57,7 @@ local function ScanFromRaiderIO(unit, entry)
     for _, id in ipairs(KS.DUNGEON_IDS) do s1DungeonSet[id] = true end
 
     local totalKeyLevel = 0
-    local numTimed = 0
-    local numUntimed = 0
+    local numDungeons = 0
 
     if mkp.sortedDungeons then
         for _, d in ipairs(mkp.sortedDungeons) do
@@ -73,30 +72,18 @@ local function ScanFromRaiderIO(unit, entry)
                         fractionalTime = d.fractionalTime,
                     }
                     totalKeyLevel = totalKeyLevel + d.level
-                    if d.chests and d.chests > 0 then
-                        numTimed = numTimed + 1
-                    else
-                        numUntimed = numUntimed + 1
-                    end
+                    numDungeons = numDungeons + 1
                 end
             end
         end
     end
 
-    -- Per-dungeon best runs (max 8 — one per dungeon)
-    local numBestRuns = numTimed + numUntimed
-    entry.avgKeyLevel = numBestRuns > 0 and (totalKeyLevel / numBestRuns) or 0
+    entry.avgKeyLevel = numDungeons > 0 and (totalKeyLevel / numDungeons) or 0
 
-    -- keystoneFivePlus = total keys timed at +5 or above (all runs, not just best)
-    -- This is the accurate "total timed" count from RaiderIO
-    if entry.keystoneFivePlus and entry.keystoneFivePlus > 0 then
-        entry.numTimed = entry.keystoneFivePlus
-    else
-        entry.numTimed = numTimed  -- fallback to best-run count
-    end
-    -- Untimed count from per-dungeon data (best we can get)
-    entry.numUntimed = numUntimed
-    entry.numRuns = entry.numTimed + entry.numUntimed
+    -- Total runs from keystoneFivePlus (all timed keys at +5 or above)
+    entry.numRuns = entry.keystoneFivePlus or 0
+    entry.numTimed = entry.numRuns
+    entry.numUntimed = 0
     entry.dataSource = "raiderio"
 
     return true
