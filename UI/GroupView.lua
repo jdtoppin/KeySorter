@@ -669,7 +669,10 @@ function KS.UpdateGroupView()
         noDataText:Hide()
     end
 
-    if #KS.groups == 0 then
+    local hasAnyContent = #KS.groups > 0
+        or (#KS.unassigned > 0)
+        or (KS.incompleteGroups and #KS.incompleteGroups > 0)
+    if not hasAnyContent then
         if not noDataText then
             noDataText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             noDataText:SetPoint("CENTER", 0, 0)
