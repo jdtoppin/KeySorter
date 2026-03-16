@@ -63,6 +63,10 @@ function KS.SendSync()
     end
 
     local data = KS.SerializeGroups()
+    if #data > 255 then
+        -- Split not implemented; warn and send what we can
+        print("|cff00ccffKeySorter|r: Warning — group data exceeds message limit. Sync may be incomplete for large raids.")
+    end
     C_ChatInfo.SendAddonMessage(PREFIX, data, "RAID")
     print("|cff00ccffKeySorter|r: Groups synced to raid.")
 end
@@ -75,7 +79,22 @@ function KS.AutoSync()
     if #KS.groups == 0 then return end
 
     local data = KS.SerializeGroups()
+    if #data > 255 then
+        -- Split not implemented; warn and send what we can
+        print("|cff00ccffKeySorter|r: Warning — group data exceeds message limit. Sync may be incomplete for large raids.")
+    end
     C_ChatInfo.SendAddonMessage(PREFIX, data, "RAID")
+end
+
+local function IsNewerVersion(remote, local_)
+    local r1, r2, r3 = remote:match("^(%d+)%.(%d+)%.(%d+)$")
+    local l1, l2, l3 = local_:match("^(%d+)%.(%d+)%.(%d+)$")
+    if not r1 or not l1 then return false end
+    r1, r2, r3 = tonumber(r1), tonumber(r2), tonumber(r3)
+    l1, l2, l3 = tonumber(l1), tonumber(l2), tonumber(l3)
+    if r1 ~= l1 then return r1 > l1 end
+    if r2 ~= l2 then return r2 > l2 end
+    return r3 > l3
 end
 
 function KS.HandleCommMessage(msg, sender)
@@ -85,16 +104,19 @@ function KS.HandleCommMessage(msg, sender)
     if parts[1] == HELLO_MSG then
         local version = parts[2] or "?"
         local role = parts[3] or "member"
-        print(format("|cff00ccffKeySorter|r: Synced with %s (v%s, %s). Addon communication active.", sender, version, role))
-        -- Check if their version is newer than ours
+        -- Only show sync message for raid members, not guild-only
+        if role ~= "guild member" then
+            print(format("|cff00ccffKeySorter|r: Synced with %s (v%s, %s). Addon communication active.", sender, version, role))
+        end
+        -- Check for newer version (show for both guild and raid)
         local myVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or "0"
-        if version ~= "?" and version > myVersion then
+        if version ~= "?" and IsNewerVersion(version, myVersion) then
             if not KS._updateNotified then
                 KS._updateNotified = true
                 print(format("|cff00ccffKeySorter|r: |cffff8800Update available!|r %s has v%s (you have v%s). Please update.", sender, version, myVersion))
             end
         end
-        -- Send a hello back if we haven't already (so both sides see the sync)
+        -- Send hello back
         if not KS._helloSent then
             KS._helloSent = true
             KS.SendHello()

@@ -129,7 +129,10 @@ local function BuildContent(member)
     -- Utilities
     yL = yL - SECTION_GAP
     yL = AddSectionHeader(yL, "Utilities", leftX, colWidth - 16)
-    local function utilColor(has) return has and 0 or 0.5, has and 0.8 or 0.5, has and 0 or 0.5 end
+    local function utilColor(has)
+        if has then return 0, 0.8, 0
+        else return 0.5, 0.5, 0.5 end
+    end
     local br_r, br_g, br_b = utilColor(member.hasBrez)
     yL = AddLabelValue(yL, "Battle Rez", member.hasBrez and "Yes" or "No", br_r, br_g, br_b, leftX)
     local bl_r, bl_g, bl_b = utilColor(member.hasLust)

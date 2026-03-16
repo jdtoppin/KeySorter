@@ -179,7 +179,10 @@ local function SetMemberInSlot(groupIdx, slot, slotIdx, member)
                 table.insert(KS.unassigned, member)
             end
         else
-            KS.unassigned[slotIdx] = nil
+            -- Use table.remove to avoid sparse array
+            if slotIdx <= #KS.unassigned then
+                table.remove(KS.unassigned, slotIdx)
+            end
         end
         return
     end
@@ -206,10 +209,8 @@ local function CompactDpsArray(groupIdx)
     local group = ResolveGroup(groupIdx)
     if not group then return end
     local compacted = {}
-    for i = 1, math.max(#group.dps, 5) do
-        if group.dps[i] then
-            table.insert(compacted, group.dps[i])
-        end
+    for _, v in pairs(group.dps) do
+        if v then table.insert(compacted, v) end
     end
     group.dps = compacted
 end

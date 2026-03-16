@@ -136,11 +136,9 @@ function KS.ShowMemberTooltip(row, member)
         table.insert(lines, {"No dungeon runs recorded.", 0.5, 0.5, 0.5})
     else
         table.insert(lines, {"Dungeon Breakdown:", 0, 0.8, 1})
-        local shown = {}
         for _, mapID in ipairs(KS.DUNGEON_IDS) do
             local run = member.runs[mapID]
             if run then
-                shown[mapID] = true
                 local name = GetDungeonName(mapID)
                 local timedStr = run.timed and "|cff00cc00Timed|r" or "|cffcc0000Untimed|r"
                 table.insert(lines, {format("  %s", name), format("+%d  %s", run.level, timedStr)})

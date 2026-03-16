@@ -103,6 +103,15 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.notes = KeySorterDB.notes or {}           -- { ["CharName-Realm"] = "note text" }
             KeySorterDB.alts = KeySorterDB.alts or {}             -- { ["CharName-Realm"] = "playerTag" }
             KeySorterDB.knownChars = KeySorterDB.knownChars or {} -- { ["CharName-Realm"] = { classFile, score, lastSeen } }
+            -- Prune stale entries older than 90 days
+            local PRUNE_AGE = 90 * 24 * 3600
+            local now = time()
+            for name, info in pairs(KeySorterDB.knownChars) do
+                if info.lastSeen and (now - info.lastSeen) > PRUNE_AGE then
+                    KeySorterDB.knownChars[name] = nil
+                    KeySorterDB.ilvlCache[name] = nil
+                end
+            end
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")
@@ -354,7 +363,8 @@ SlashCmdList["KEYSORTER"] = function(msg)
                 print(format("|cff00ccffKeySorter|r: Group %s does not exist.", num))
             end
         else
-            for i = 1, #KS.groups do KS.AnnounceGroup(i) end
+            local total = #KS.groups + (KS.incompleteGroups and #KS.incompleteGroups or 0)
+            for i = 1, total do KS.AnnounceGroup(i) end
         end
     elseif cmd == "sync" then
         KS.SendSync()
