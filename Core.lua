@@ -235,7 +235,14 @@ end
 -- Announce groups: post assignments to raid chat
 ---------------------------------------------------------------------------
 function KS.AnnounceGroup(groupIdx)
+    -- Resolve from KS.groups or KS.incompleteGroups
     local group = KS.groups[groupIdx]
+    if not group and KS.incompleteGroups then
+        local incIdx = groupIdx - #KS.groups
+        if incIdx > 0 then
+            group = KS.incompleteGroups[incIdx]
+        end
+    end
     if not group then return end
 
     if not KS.previewMode then
