@@ -292,25 +292,34 @@ function KS.TrySwapForUtility(needGroupIdx, utilKey)
     local needGroup = KS.groups[needGroupIdx]
     if needGroup.locked then return end
 
-    -- First: try to pull a utility player from unassigned (no score threshold needed)
+    -- First: try to pull the highest-scored utility player from unassigned
+    local bestUnIdx, bestUnMember, bestUnScore = nil, nil, -1
     for ui, unMember in ipairs(KS.unassigned) do
         if unMember[utilKey] and unMember.role == "DAMAGER" then
-            -- Find the lowest-scored DPS in the need group without this utility
-            local worstIdx, worstScore = nil, math.huge
-            for di, dps in ipairs(needGroup.dps) do
-                if not dps[utilKey] and dps.score < worstScore then
-                    worstIdx = di
-                    worstScore = dps.score
-                end
+            local score = unMember.score or 0
+            if score > bestUnScore then
+                bestUnIdx = ui
+                bestUnMember = unMember
+                bestUnScore = score
             end
-            if worstIdx then
-                -- Swap: utility player from unassigned replaces worst DPS
-                local displaced = needGroup.dps[worstIdx]
-                needGroup.dps[worstIdx] = unMember
-                table.remove(KS.unassigned, ui)
-                table.insert(KS.unassigned, displaced)
-                return -- done, utility covered
+        end
+    end
+    if bestUnIdx and bestUnMember then
+        -- Find the lowest-scored DPS in the need group without this utility
+        local worstIdx, worstScore = nil, math.huge
+        for di, dps in ipairs(needGroup.dps) do
+            if not dps[utilKey] and (dps.score or 0) < worstScore then
+                worstIdx = di
+                worstScore = dps.score or 0
             end
+        end
+        if worstIdx then
+            -- Swap: best utility player from unassigned replaces worst non-utility DPS
+            local displaced = needGroup.dps[worstIdx]
+            needGroup.dps[worstIdx] = bestUnMember
+            table.remove(KS.unassigned, bestUnIdx)
+            table.insert(KS.unassigned, displaced)
+            return -- done, utility covered
         end
     end
 
