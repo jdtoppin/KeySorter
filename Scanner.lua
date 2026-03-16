@@ -31,9 +31,6 @@ function KS.ScanRoster()
     if KS.UpdateRosterView then
         KS.UpdateRosterView()
     end
-
-    local source = (RaiderIO and RaiderIO.GetProfile) and "Raider.IO" or "Blizzard API"
-    print(format("|cff00ccffKeySorter|r: Scanned %d member(s) via %s.", #KS.roster, source))
 end
 
 -- Try Raider.IO first, returns true + populated entry fields if successful
