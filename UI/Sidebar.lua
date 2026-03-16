@@ -230,8 +230,8 @@ function KS.CreateSidebar(parent)
         local notifElapsed = 0
 
         function KS.UpdateSidebarNotification()
-            local needsSort = #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0)
-            if needsSort then
+            local needsAttention = (#KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0)) and not KS._sortAcknowledged
+            if needsAttention then
                 notifDot:Show()
                 notifElapsed = 0
                 notifFrame:SetScript("OnUpdate", function(self, dt)

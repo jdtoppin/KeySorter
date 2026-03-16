@@ -144,6 +144,9 @@ function KS.CreateMainFrame()
         if not KS.previewMode and KS.IsPermitted() then
             KS.ApplyGroups()
         end
+        -- Acknowledge: dismiss glow until new players join
+        KS._sortAcknowledged = true
+        KS._lastSortedRosterCount = #KS.roster
         if KS.UpdateGroupView then KS.UpdateGroupView() end
         if KS.UpdateSortGlow then KS.UpdateSortGlow() end
         if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
@@ -201,8 +204,14 @@ function KS.CreateMainFrame()
     end
 
     function KS.UpdateSortGlow()
-        -- Glow when there are unassigned players OR when roster has players but no groups yet
-        if #KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0) then
+        -- Reset acknowledged state if new players have joined since last sort
+        if KS._sortAcknowledged and KS._lastSortedRosterCount and #KS.roster > KS._lastSortedRosterCount then
+            KS._sortAcknowledged = false
+        end
+
+        -- Glow when unassigned/unsorted AND not yet acknowledged by clicking Sort
+        local needsAttention = (#KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0)) and not KS._sortAcknowledged
+        if needsAttention then
             if not glowActive then
                 glowActive = true
                 ShowGlowEdges(true)
