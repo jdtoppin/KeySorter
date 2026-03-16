@@ -163,6 +163,7 @@ function KS.CreateMainFrame()
         return t
     end
     -- Top, Bottom, Left, Right edges (2px thick, extending slightly beyond the button)
+    -- Top and bottom span full width, left and right fit between them (no corner overlap)
     glowEdges.top = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
     glowEdges.top:SetPoint("TOPLEFT", -2, 2)
     glowEdges.top:SetPoint("TOPRIGHT", 2, 2)
@@ -176,14 +177,14 @@ function KS.CreateMainFrame()
     glowEdges.bottom:SetColorTexture(0, 0.8, 1, 0)
 
     glowEdges.left = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
-    glowEdges.left:SetPoint("TOPLEFT", -2, 2)
-    glowEdges.left:SetPoint("BOTTOMLEFT", -2, -2)
+    glowEdges.left:SetPoint("TOPLEFT", -2, 0)
+    glowEdges.left:SetPoint("BOTTOMLEFT", -2, 0)
     glowEdges.left:SetWidth(2)
     glowEdges.left:SetColorTexture(0, 0.8, 1, 0)
 
     glowEdges.right = sortBtnGroups:CreateTexture(nil, "OVERLAY", nil, 7)
-    glowEdges.right:SetPoint("TOPRIGHT", 2, 2)
-    glowEdges.right:SetPoint("BOTTOMRIGHT", 2, -2)
+    glowEdges.right:SetPoint("TOPRIGHT", 2, 0)
+    glowEdges.right:SetPoint("BOTTOMRIGHT", 2, 0)
     glowEdges.right:SetWidth(2)
     glowEdges.right:SetColorTexture(0, 0.8, 1, 0)
 
@@ -211,7 +212,7 @@ function KS.CreateMainFrame()
                     glowElapsed = glowElapsed + dt
                     local alpha = 0.4 + 0.4 * math.sin(glowElapsed * 3)
                     for _, t in pairs(glowEdges) do
-                        t:SetVertexColor(0, 0.8, 1, alpha)
+                        t:SetColorTexture(0, 0.8, 1, alpha)
                     end
                 end)
             end
