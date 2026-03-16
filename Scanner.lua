@@ -79,11 +79,20 @@ local function ScanFromRaiderIO(unit, entry)
         end
     end
 
-    local numRuns = numTimed + numUntimed
-    entry.avgKeyLevel = numRuns > 0 and (totalKeyLevel / numRuns) or 0
-    entry.numRuns = numRuns
-    entry.numTimed = numTimed
+    -- Per-dungeon best runs (max 8 — one per dungeon)
+    local numBestRuns = numTimed + numUntimed
+    entry.avgKeyLevel = numBestRuns > 0 and (totalKeyLevel / numBestRuns) or 0
+
+    -- keystoneFivePlus = total keys timed at +5 or above (all runs, not just best)
+    -- This is the accurate "total timed" count from RaiderIO
+    if entry.keystoneFivePlus and entry.keystoneFivePlus > 0 then
+        entry.numTimed = entry.keystoneFivePlus
+    else
+        entry.numTimed = numTimed  -- fallback to best-run count
+    end
+    -- Untimed count from per-dungeon data (best we can get)
     entry.numUntimed = numUntimed
+    entry.numRuns = entry.numTimed + entry.numUntimed
     entry.dataSource = "raiderio"
 
     return true
