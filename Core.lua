@@ -100,6 +100,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.uiScale = KeySorterDB.uiScale or 1.0
             KeySorterDB.welcomeMsg = KeySorterDB.welcomeMsg or "Welcome to M+ night! We'll be sorting groups shortly. Please stay in the raid."
             KeySorterDB.gatherMsg = KeySorterDB.gatherMsg or "Please gather at Silvermoon by the Weekly Vendors for group sorting!"
+            KeySorterDB.notes = KeySorterDB.notes or {}           -- { ["CharName-Realm"] = "note text" }
+            KeySorterDB.alts = KeySorterDB.alts or {}             -- { ["CharName-Realm"] = "playerTag" }
+            KeySorterDB.knownChars = KeySorterDB.knownChars or {} -- { ["CharName-Realm"] = { classFile, score, lastSeen } }
             self:UnregisterEvent("ADDON_LOADED")
             KS.CreateMinimapButton()
             print("|cff00ccffKeySorter|r loaded. Type |cff00ff00/ks|r or |cff00ff00/ks help|r for commands.")

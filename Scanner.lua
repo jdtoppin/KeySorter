@@ -205,5 +205,16 @@ function KS.ScanUnit(unit, name, raidIndex)
     -- Precompute utility count for roster sorting
     entry.utilityCount = (entry.hasBrez and 1 or 0) + (entry.hasLust and 1 or 0) + (entry.hasShroud and 1 or 0)
 
+    -- Track this character in the known characters database
+    if KeySorterDB and KeySorterDB.knownChars and name then
+        KeySorterDB.knownChars[name] = {
+            classFile = classFile,
+            score = entry.score,
+            ilvl = entry.ilvl,
+            role = role,
+            lastSeen = time(),
+        }
+    end
+
     table.insert(KS.roster, entry)
 end

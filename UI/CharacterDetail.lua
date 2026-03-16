@@ -147,6 +147,226 @@ local function BuildContent(member)
         yL = AddLabelValue(yL, "+20 Timed", tostring(member.keystoneTwentyPlus or 0), nil, nil, nil, leftX)
     end
 
+    -- Notes
+    yL = yL - SECTION_GAP
+    yL = AddSectionHeader(yL, "Notes", leftX, colWidth - 16)
+
+    local noteContainer = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
+    noteContainer:SetPoint("TOPLEFT", leftX + 8, yL)
+    noteContainer:SetSize(colWidth - 24, 44)
+    noteContainer:SetBackdrop(KS.BACKDROP)
+    noteContainer:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+    noteContainer:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    table.insert(contentWidgets, noteContainer)
+
+    local noteSF = CreateFrame("ScrollFrame", nil, noteContainer)
+    noteSF:SetPoint("TOPLEFT", 4, -3)
+    noteSF:SetPoint("BOTTOMRIGHT", -4, 3)
+    table.insert(contentWidgets, noteSF)
+
+    local noteBox = CreateFrame("EditBox", nil, noteSF)
+    noteBox:SetWidth(colWidth - 36)
+    noteBox:SetFontObject("GameFontHighlightSmall")
+    noteBox:SetAutoFocus(false)
+    noteBox:SetMultiLine(true)
+    noteBox:SetText(KeySorterDB.notes[member.name] or "")
+    noteSF:SetScrollChild(noteBox)
+    table.insert(contentWidgets, noteBox)
+
+    local noteSaveBtn = KS.CreateButton(scrollChild, "Save", "accent", 44, 18)
+    noteSaveBtn:SetAnimatedHighlight(true)
+    noteSaveBtn:SetPoint("TOPLEFT", leftX + 8, yL - 48)
+    noteSaveBtn:SetOnClick(function()
+        KeySorterDB.notes[member.name] = noteBox:GetText()
+        print(format("|cff00ccffKeySorter|r: Note saved for %s.", member.name))
+    end)
+    table.insert(contentWidgets, noteSaveBtn)
+
+    local noteClearBtn = KS.CreateButton(scrollChild, "Clear", "widget", 44, 18)
+    noteClearBtn:SetAnimatedHighlight(true)
+    noteClearBtn:SetPoint("LEFT", noteSaveBtn, "RIGHT", 4, 0)
+    noteClearBtn:SetOnClick(function()
+        noteBox:SetText("")
+        KeySorterDB.notes[member.name] = nil
+        print(format("|cff00ccffKeySorter|r: Note cleared for %s.", member.name))
+    end)
+    table.insert(contentWidgets, noteClearBtn)
+
+    yL = yL - 72
+
+    -- Linked Alts
+    yL = yL - SECTION_GAP
+    yL = AddSectionHeader(yL, "Linked Alts", leftX, colWidth - 16)
+
+    -- Show currently linked alts
+    local myTag = KeySorterDB.alts[member.name]
+    local linkedNames = {}
+    if myTag then
+        for charName, tag in pairs(KeySorterDB.alts) do
+            if tag == myTag and charName ~= member.name then
+                table.insert(linkedNames, charName)
+            end
+        end
+    end
+
+    if #linkedNames > 0 then
+        for _, altName in ipairs(linkedNames) do
+            local info = KeySorterDB.knownChars[altName]
+            local altText
+            if info then
+                local classColor = KS.CLASS_COLORS[info.classFile]
+                local colorStr = classColor and format("|cff%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255) or "|cffffffff"
+                local sr, sg, sb = KS.GetScoreColor(info.score or 0)
+                altText = format("%s%s|r — |cff%02x%02x%02x%d|r score, %d ilvl",
+                    colorStr, altName, sr * 255, sg * 255, sb * 255, info.score or 0, info.ilvl or 0)
+            else
+                altText = altName .. " |cff666666(not seen recently)|r"
+            end
+            local altFs = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            altFs:SetPoint("TOPLEFT", leftX + 12, yL)
+            altFs:SetText(altText)
+            table.insert(contentWidgets, altFs)
+            yL = yL - LINE_HEIGHT
+        end
+    else
+        local noAlts = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        noAlts:SetPoint("TOPLEFT", leftX + 12, yL)
+        noAlts:SetText("|cff666666No linked alts|r")
+        noAlts:SetTextColor(0.5, 0.5, 0.5)
+        table.insert(contentWidgets, noAlts)
+        yL = yL - LINE_HEIGHT
+    end
+
+    yL = yL - 4
+
+    -- Search box to link an alt
+    local linkLabel = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    linkLabel:SetPoint("TOPLEFT", leftX + 8, yL)
+    linkLabel:SetText("Link alt:")
+    linkLabel:SetTextColor(0.7, 0.7, 0.7)
+    table.insert(contentWidgets, linkLabel)
+
+    local searchBox = CreateFrame("EditBox", nil, scrollChild, "BackdropTemplate")
+    searchBox:SetPoint("LEFT", linkLabel, "RIGHT", 6, 0)
+    searchBox:SetSize(140, 20)
+    searchBox:SetBackdrop(KS.BACKDROP)
+    searchBox:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+    searchBox:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+    searchBox:SetFontObject("GameFontHighlightSmall")
+    searchBox:SetAutoFocus(false)
+    searchBox:SetTextInsets(4, 4, 2, 2)
+    table.insert(contentWidgets, searchBox)
+
+    -- Search results dropdown
+    local searchResults = CreateFrame("Frame", nil, searchBox, "BackdropTemplate")
+    searchResults:SetPoint("TOPLEFT", searchBox, "BOTTOMLEFT", 0, -1)
+    searchResults:SetSize(140, 1)
+    searchResults:SetBackdrop(KS.BACKDROP)
+    searchResults:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
+    searchResults:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+    searchResults:SetFrameStrata("DIALOG")
+    searchResults:Hide()
+    table.insert(contentWidgets, searchResults)
+    local resultButtons = {}
+
+    local function UpdateSearchResults(query)
+        for _, btn in ipairs(resultButtons) do btn:Hide() end
+        if not query or #query < 2 then searchResults:Hide(); return end
+
+        local matches = {}
+        query = query:lower()
+        for charName, info in pairs(KeySorterDB.knownChars) do
+            if charName ~= member.name and charName:lower():find(query, 1, true) then
+                table.insert(matches, { name = charName, info = info })
+            end
+        end
+        -- Also check roster for chars not yet in knownChars
+        for _, m in ipairs(KS.roster) do
+            if m.name ~= member.name and m.name:lower():find(query, 1, true) then
+                local found = false
+                for _, match in ipairs(matches) do
+                    if match.name == m.name then found = true; break end
+                end
+                if not found then
+                    table.insert(matches, { name = m.name, info = { classFile = m.classFile, score = m.score, ilvl = m.ilvl } })
+                end
+            end
+        end
+
+        if #matches == 0 then searchResults:Hide(); return end
+
+        local maxShow = math.min(#matches, 6)
+        searchResults:SetHeight(maxShow * 18 + 4)
+        searchResults:Show()
+
+        for i = 1, maxShow do
+            if not resultButtons[i] then
+                local rb = CreateFrame("Button", nil, searchResults)
+                rb:SetHeight(18)
+                rb:SetPoint("TOPLEFT", 2, -(i - 1) * 18 - 2)
+                rb:SetPoint("TOPRIGHT", -2, -(i - 1) * 18 - 2)
+                local rbText = rb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                rbText:SetPoint("LEFT", 4, 0)
+                rb._text = rbText
+                rb:SetScript("OnEnter", function(self) self._text:SetTextColor(1, 1, 1) end)
+                rb:SetScript("OnLeave", function(self) self._text:SetTextColor(0.8, 0.8, 0.8) end)
+                resultButtons[i] = rb
+            end
+            local rb = resultButtons[i]
+            local match = matches[i]
+            local classColor = KS.CLASS_COLORS[match.info.classFile]
+            local colorStr = classColor and format("|cff%02x%02x%02x", classColor.r * 255, classColor.g * 255, classColor.b * 255) or "|cffffffff"
+            rb._text:SetText(format("%s%s|r (%d)", colorStr, match.name, match.info.score or 0))
+            rb._text:SetTextColor(0.8, 0.8, 0.8)
+            rb:SetScript("OnClick", function()
+                -- Link this alt to the current member
+                local tag = KeySorterDB.alts[member.name] or member.name
+                KeySorterDB.alts[member.name] = tag
+                KeySorterDB.alts[match.name] = tag
+                searchBox:SetText("")
+                searchResults:Hide()
+                print(format("|cff00ccffKeySorter|r: Linked %s as an alt of %s.", match.name, member.name))
+                -- Refresh the detail view
+                KS.ShowCharacterDetail(member, previousTab)
+            end)
+            rb:Show()
+        end
+        for i = maxShow + 1, #resultButtons do
+            resultButtons[i]:Hide()
+        end
+    end
+
+    searchBox:SetScript("OnTextChanged", function(self)
+        UpdateSearchResults(self:GetText())
+    end)
+    searchBox:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+        searchResults:Hide()
+    end)
+
+    -- Unlink button (if linked)
+    if myTag then
+        local unlinkBtn = KS.CreateButton(scrollChild, "Unlink All", "red", 70, 18)
+        unlinkBtn:SetAnimatedHighlight(true)
+        unlinkBtn:SetPoint("TOPLEFT", leftX + 8, yL - LINE_HEIGHT - 4)
+        unlinkBtn:SetOnClick(function()
+            -- Remove all links for this player tag
+            local tag = KeySorterDB.alts[member.name]
+            if tag then
+                for charName, t in pairs(KeySorterDB.alts) do
+                    if t == tag then KeySorterDB.alts[charName] = nil end
+                end
+            end
+            print(format("|cff00ccffKeySorter|r: Unlinked all alts for %s.", member.name))
+            KS.ShowCharacterDetail(member, previousTab)
+        end)
+        table.insert(contentWidgets, unlinkBtn)
+        yL = yL - LINE_HEIGHT - 26
+    end
+
+    yL = yL - LINE_HEIGHT - 8
+
     -- =====================================================================
     -- RIGHT COLUMN (or below left if single column): Run Summary, Dungeons
     -- =====================================================================

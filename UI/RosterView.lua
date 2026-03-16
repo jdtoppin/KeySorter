@@ -568,13 +568,23 @@ function KS.UpdateRosterView()
         row:Show()
         row._member = member
 
-        -- Name (class colored)
+        -- Name (class colored) with note/alt indicators
         local classColor = KS.CLASS_COLORS[member.classFile]
+        local nameStr
         if classColor then
-            row.texts[1]:SetText(format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, member.name))
+            nameStr = format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, member.name)
         else
-            row.texts[1]:SetText(member.name)
+            nameStr = member.name
         end
+        -- Note indicator
+        if KeySorterDB.notes and KeySorterDB.notes[member.name] and KeySorterDB.notes[member.name] ~= "" then
+            nameStr = nameStr .. " |cffffcc00*|r"
+        end
+        -- Alt indicator
+        if KeySorterDB.alts and KeySorterDB.alts[member.name] then
+            nameStr = nameStr .. " |cff8888ff~|r"
+        end
+        row.texts[1]:SetText(nameStr)
 
         -- Role icon
         row.texts[2]:SetText("")
