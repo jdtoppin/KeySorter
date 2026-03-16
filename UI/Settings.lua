@@ -82,9 +82,7 @@ function KS.CreateSettingsView(parent)
         KS.previewPlayerCount = val
         if KS.previewMode then
             KS.GeneratePreviewData()
-            if #KS.groups > 0 then
-                KS.ReconcileGroups()
-            end
+            KS.ReconcileGroups()
             if KS.UpdateRosterView then KS.UpdateRosterView() end
             if KS.UpdateGroupView then KS.UpdateGroupView() end
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end

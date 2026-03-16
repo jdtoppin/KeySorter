@@ -172,7 +172,6 @@ end
 -- Does NOT re-sort — preserves existing group assignments.
 ---------------------------------------------------------------------------
 function KS.ReconcileGroups()
-    if #KS.groups == 0 then return end
 
     -- Build lookup of current roster names
     local rosterNames = {}
@@ -258,6 +257,45 @@ function KS.ReconcileGroups()
     end
 
     KS.unassigned = newUnassigned
+
+    -- Update empty group cards based on total raid size
+    -- Groups appear at 5/10/15/20/25/30/35/40 player thresholds
+    local totalPlayers = #KS.roster
+    local totalGroupsNeeded = math.ceil(totalPlayers / 5)
+    local filledGroups = #KS.groups
+
+    -- Count non-empty incomplete groups (ones with members dragged in)
+    local nonEmptyIncomplete = 0
+    if KS.incompleteGroups then
+        for _, g in ipairs(KS.incompleteGroups) do
+            local count = 0
+            if g.tank then count = count + 1 end
+            if g.healer then count = count + 1 end
+            count = count + #g.dps
+            if count > 0 then nonEmptyIncomplete = nonEmptyIncomplete + 1 end
+        end
+    end
+
+    -- Ensure we have enough empty group cards
+    local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - filledGroups - nonEmptyIncomplete)
+    -- Preserve existing incomplete groups that have members
+    local newIncomplete = {}
+    if KS.incompleteGroups then
+        for _, g in ipairs(KS.incompleteGroups) do
+            local count = 0
+            if g.tank then count = count + 1 end
+            if g.healer then count = count + 1 end
+            count = count + #g.dps
+            if count > 0 then
+                table.insert(newIncomplete, g)
+            end
+        end
+    end
+    -- Add empty cards to fill up to the needed count
+    for i = 1, emptyGroupsNeeded do
+        table.insert(newIncomplete, { tank = nil, healer = nil, dps = {} })
+    end
+    KS.incompleteGroups = newIncomplete
 end
 
 function KS.GroupScore(group)

@@ -137,11 +137,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
             elseif not IsInRaid() then
                 KS._helloSent = false
             end
-            -- Reconcile: remove leavers, add joiners to unassigned
-            if #KS.groups > 0 then
-                KS.ReconcileGroups()
-                if KS.UpdateGroupView then KS.UpdateGroupView() end
-            end
+            -- Reconcile: remove leavers, add joiners to unassigned, update empty group cards
+            KS.ReconcileGroups()
+            if KS.UpdateGroupView then KS.UpdateGroupView() end
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end
             if KS.mainFrame and KS.mainFrame:IsShown() then
                 KS.UpdatePermissionState()
