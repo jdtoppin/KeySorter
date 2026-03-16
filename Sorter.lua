@@ -292,6 +292,29 @@ function KS.TrySwapForUtility(needGroupIdx, utilKey)
     local needGroup = KS.groups[needGroupIdx]
     if needGroup.locked then return end
 
+    -- First: try to pull a utility player from unassigned (no score threshold needed)
+    for ui, unMember in ipairs(KS.unassigned) do
+        if unMember[utilKey] and unMember.role == "DAMAGER" then
+            -- Find the lowest-scored DPS in the need group without this utility
+            local worstIdx, worstScore = nil, math.huge
+            for di, dps in ipairs(needGroup.dps) do
+                if not dps[utilKey] and dps.score < worstScore then
+                    worstIdx = di
+                    worstScore = dps.score
+                end
+            end
+            if worstIdx then
+                -- Swap: utility player from unassigned replaces worst DPS
+                local displaced = needGroup.dps[worstIdx]
+                needGroup.dps[worstIdx] = unMember
+                table.remove(KS.unassigned, ui)
+                table.insert(KS.unassigned, displaced)
+                return -- done, utility covered
+            end
+        end
+    end
+
+    -- Second: try swapping between groups (existing logic)
     local bestSwap = nil
     local bestPriority = math.huge
 
