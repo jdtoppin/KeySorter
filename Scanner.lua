@@ -52,7 +52,10 @@ local function ScanFromRaiderIO(unit, entry)
     entry.keystoneFifteenPlus = mkp.keystoneFifteenPlus or 0
     entry.keystoneTwentyPlus = mkp.keystoneTwentyPlus or 0
 
-    -- Per-dungeon data from sortedDungeons
+    -- Per-dungeon data from sortedDungeons (filter to S1 Midnight dungeons only)
+    local s1DungeonSet = {}
+    for _, id in ipairs(KS.DUNGEON_IDS) do s1DungeonSet[id] = true end
+
     local totalKeyLevel = 0
     local numTimed = 0
     local numUntimed = 0
@@ -61,19 +64,20 @@ local function ScanFromRaiderIO(unit, entry)
         for _, d in ipairs(mkp.sortedDungeons) do
             if d.dungeon and d.level and d.level > 0 then
                 local mapID = d.dungeon.id or d.dungeon.challengeModeID
-                if mapID then
+                -- Only track S1 Midnight dungeons
+                if mapID and s1DungeonSet[mapID] then
                     entry.runs[mapID] = {
                         level = d.level,
                         timed = d.chests and d.chests > 0,
                         chests = d.chests or 0,
                         fractionalTime = d.fractionalTime,
                     }
-                end
-                totalKeyLevel = totalKeyLevel + d.level
-                if d.chests and d.chests > 0 then
-                    numTimed = numTimed + 1
-                else
-                    numUntimed = numUntimed + 1
+                    totalKeyLevel = totalKeyLevel + d.level
+                    if d.chests and d.chests > 0 then
+                        numTimed = numTimed + 1
+                    else
+                        numUntimed = numUntimed + 1
+                    end
                 end
             end
         end
