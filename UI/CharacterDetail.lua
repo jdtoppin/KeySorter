@@ -141,10 +141,10 @@ local function BuildContent(member)
     if member.dataSource == "raiderio" or (member.keystoneFivePlus and member.keystoneFivePlus > 0) then
         yL = yL - SECTION_GAP
         yL = AddSectionHeader(yL, "Timed Key Thresholds", leftX, colWidth - 16)
-        yL = AddLabelValue(yL, "+5 Timed", tostring(member.keystoneFivePlus or 0), nil, nil, nil, leftX)
-        yL = AddLabelValue(yL, "+10 Timed", tostring(member.keystoneTenPlus or 0), nil, nil, nil, leftX)
-        yL = AddLabelValue(yL, "+15 Timed", tostring(member.keystoneFifteenPlus or 0), nil, nil, nil, leftX)
-        yL = AddLabelValue(yL, "+20 Timed", tostring(member.keystoneTwentyPlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+5 to +9", tostring(member.keystoneFivePlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+10 to +14", tostring(member.keystoneTenPlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+15 to +19", tostring(member.keystoneFifteenPlus or 0), nil, nil, nil, leftX)
+        yL = AddLabelValue(yL, "+20+", tostring(member.keystoneTwentyPlus or 0), nil, nil, nil, leftX)
     end
 
     -- Notes
