@@ -192,35 +192,13 @@ function KS.ReconcileGroups()
 
     -- Remove departed members from groups, update member data for those still present
     for _, group in ipairs(KS.groups) do
-        if group.tank then
-            if rosterNames[group.tank.name] then
-                group.tank = rosterNames[group.tank.name]
-                assignedNames[group.tank.name] = true
-            else
-                group.tank = nil
-            end
-        end
-        if group.healer then
-            if rosterNames[group.healer.name] then
-                group.healer = rosterNames[group.healer.name]
-                assignedNames[group.healer.name] = true
-            else
-                group.healer = nil
-            end
-        end
-        local newDps = {}
-        for _, d in ipairs(group.dps) do
-            if rosterNames[d.name] then
-                table.insert(newDps, rosterNames[d.name])
-                assignedNames[d.name] = true
-            end
-        end
-        group.dps = newDps
-    end
-
-    -- Reconcile incomplete groups the same way
-    if KS.incompleteGroups then
-        for _, group in ipairs(KS.incompleteGroups) do
+        if group.locked then
+            -- Locked groups: don't modify members, just mark them as assigned
+            -- so they don't appear in unassigned
+            if group.tank then assignedNames[group.tank.name] = true end
+            if group.healer then assignedNames[group.healer.name] = true end
+            for _, d in ipairs(group.dps) do assignedNames[d.name] = true end
+        else
             if group.tank then
                 if rosterNames[group.tank.name] then
                     group.tank = rosterNames[group.tank.name]
@@ -245,6 +223,42 @@ function KS.ReconcileGroups()
                 end
             end
             group.dps = newDps
+        end
+    end
+
+    -- Reconcile incomplete groups the same way (respecting locked state)
+    if KS.incompleteGroups then
+        for _, group in ipairs(KS.incompleteGroups) do
+            if group.locked then
+                if group.tank then assignedNames[group.tank.name] = true end
+                if group.healer then assignedNames[group.healer.name] = true end
+                for _, d in ipairs(group.dps) do assignedNames[d.name] = true end
+            else
+                if group.tank then
+                    if rosterNames[group.tank.name] then
+                        group.tank = rosterNames[group.tank.name]
+                        assignedNames[group.tank.name] = true
+                    else
+                        group.tank = nil
+                    end
+                end
+                if group.healer then
+                    if rosterNames[group.healer.name] then
+                        group.healer = rosterNames[group.healer.name]
+                        assignedNames[group.healer.name] = true
+                    else
+                        group.healer = nil
+                    end
+                end
+                local newDps = {}
+                for _, d in ipairs(group.dps) do
+                    if rosterNames[d.name] then
+                        table.insert(newDps, rosterNames[d.name])
+                        assignedNames[d.name] = true
+                    end
+                end
+                group.dps = newDps
+            end
         end
     end
 
