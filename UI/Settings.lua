@@ -156,13 +156,12 @@ function KS.CreateSettingsView(parent)
         KS.previewPlayerCount = simCount
         KS.GeneratePreviewData()
 
-        if #KS.groups > 0 then
-            KS.ReconcileGroups()
-        end
+        KS.ReconcileGroups()
 
         if KS.UpdateRosterView then KS.UpdateRosterView() end
         if KS.UpdateGroupView then KS.UpdateGroupView() end
         if KS.UpdateSortGlow then KS.UpdateSortGlow() end
+        if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
 
         simStatus:SetText(format("|cff00ccff%d / %d players joined|r", simCount, KS.simTarget or 25))
 
