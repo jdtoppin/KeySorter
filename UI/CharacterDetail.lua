@@ -10,6 +10,8 @@ local detailFrame       -- overlay frame (created once, reused)
 local scrollFrame, scrollChild
 local previousTab       -- which tab to return to
 local contentWidgets = {} -- widgets created inside scrollChild (cleared on refresh)
+local currentMember     -- member currently being displayed
+local lastTwoCol        -- cached column mode to detect layout changes
 
 local SECTION_GAP = 12
 local LINE_HEIGHT = 18
@@ -89,6 +91,7 @@ local function BuildContent(member)
     local totalWidth = scrollChild:GetWidth()
     if totalWidth < 1 then totalWidth = 500 end
     local twoCol = totalWidth >= (COL_MIN_WIDTH * 2)
+    lastTwoCol = twoCol
     local colWidth = twoCol and math.floor(totalWidth / 2) or totalWidth
     local leftX = 0
     local rightX = twoCol and colWidth or 0
@@ -123,6 +126,8 @@ local function BuildContent(member)
         yL = AddLabelValue(yL, "Item Level", "Unknown", 0.5, 0.5, 0.5, leftX)
     end
 
+    local totalRuns = (member.keystoneFivePlus or 0) + (member.keystoneTenPlus or 0) + (member.keystoneFifteenPlus or 0) + (member.keystoneTwentyPlus or 0)
+    yL = AddLabelValue(yL, "Total Runs", tostring(totalRuns), nil, nil, nil, leftX)
     yL = AddLabelValue(yL, "Avg Key Level", format("%.1f", member.avgKeyLevel or 0), nil, nil, nil, leftX)
     yL = AddLabelValue(yL, "Data Source", member.dataSource == "raiderio" and "Raider.IO" or member.dataSource == "blizzard" and "Blizzard API" or "None", 0.5, 0.5, 0.5, leftX)
 
@@ -143,7 +148,7 @@ local function BuildContent(member)
     -- Key Thresholds
     if member.dataSource == "raiderio" or (member.keystoneFivePlus and member.keystoneFivePlus > 0) then
         yL = yL - SECTION_GAP
-        yL = AddSectionHeader(yL, "Timed Key Thresholds", leftX, colWidth - 16)
+        yL = AddSectionHeader(yL, "Timed Key Breakdown", leftX, colWidth - 16)
         yL = AddLabelValue(yL, "+5 to +9", tostring(member.keystoneFivePlus or 0), nil, nil, nil, leftX)
         yL = AddLabelValue(yL, "+10 to +14", tostring(member.keystoneTenPlus or 0), nil, nil, nil, leftX)
         yL = AddLabelValue(yL, "+15 to +19", tostring(member.keystoneFifteenPlus or 0), nil, nil, nil, leftX)
@@ -154,9 +159,10 @@ local function BuildContent(member)
     yL = yL - SECTION_GAP
     yL = AddSectionHeader(yL, "Notes", leftX, colWidth - 16)
 
+    local noteWidth = math.min(colWidth - 24, 300)
     local noteContainer = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
     noteContainer:SetPoint("TOPLEFT", leftX + 8, yL)
-    noteContainer:SetSize(colWidth - 24, 44)
+    noteContainer:SetSize(noteWidth, 44)
     noteContainer:SetBackdrop(KS.BACKDROP)
     noteContainer:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
     noteContainer:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
@@ -168,7 +174,7 @@ local function BuildContent(member)
     table.insert(contentWidgets, noteSF)
 
     local noteBox = CreateFrame("EditBox", nil, noteSF)
-    noteBox:SetWidth(colWidth - 36)
+    noteBox:SetWidth(noteWidth - 12)
     noteBox:SetFontObject("GameFontHighlightSmall")
     noteBox:SetAutoFocus(false)
     noteBox:SetMultiLine(true)
@@ -371,19 +377,12 @@ local function BuildContent(member)
     yL = yL - LINE_HEIGHT - 8
 
     -- =====================================================================
-    -- RIGHT COLUMN (or below left if single column): Run Summary, Dungeons
+    -- RIGHT COLUMN (or below left if single column): Dungeons
     -- =====================================================================
     local yR = twoCol and 0 or (yL - SECTION_GAP)
     local cX = rightX  -- column x offset
 
-    yR = AddSectionHeader(yR, "Run Summary", cX, colWidth - 16)
-    yR = AddLabelValue(yR, "Total Runs", tostring(member.numRuns or 0), nil, nil, nil, cX)
-    yR = AddLabelValue(yR, "Timed Runs", tostring(member.numTimed or 0), 0, 0.8, 0, cX)
-    yR = AddLabelValue(yR, "Untimed Runs", tostring(member.numUntimed or 0), 0.8, 0, 0, cX)
-
-    ---------------------------------------------------------------------------
-    -- Dungeon Breakdown (right column continued)
-    ---------------------------------------------------------------------------
+    -- Timed Key Breakdown
     if member.runs and next(member.runs) then
         yR = yR - SECTION_GAP
         yR = AddSectionHeader(yR, "Dungeon Breakdown", cX, colWidth - 16)
@@ -522,6 +521,11 @@ local function EnsureDetailFrame()
     detailFrame = CreateFrame("Frame", nil, KS.mainFrame, "BackdropTemplate")
     detailFrame:SetPoint("TOPLEFT", KS.contentArea, "TOPLEFT", 0, 0)
     detailFrame:SetPoint("BOTTOMRIGHT", KS.mainFrame, "BOTTOMRIGHT", -1, 1)
+
+    -- Add own close button so the main one doesn't need to peek through
+    local closeBtn = KS.CreateCloseButton(detailFrame)
+    closeBtn:SetPoint("TOPRIGHT", -6, -6)
+    closeBtn:SetOnClick(function() KS.HideCharacterDetail() end)
     detailFrame:SetFrameLevel(KS.mainFrame:GetFrameLevel() + 10)
     detailFrame:SetBackdrop(KS.BACKDROP)
     detailFrame:SetBackdropColor(0.08, 0.08, 0.08, 1)
@@ -554,6 +558,23 @@ local function EnsureDetailFrame()
     scrollParent:SetPoint("BOTTOMRIGHT", -8, 8)
 
     scrollFrame, scrollChild = KS.CreateScrollFrame(scrollParent, "KeySorterCharDetailScroll")
+
+    -- Rebuild content responsively when crossing the column threshold
+    local resizeTimer
+    detailFrame:SetScript("OnSizeChanged", function()
+        if not currentMember or not detailFrame:IsShown() then return end
+        if resizeTimer then resizeTimer:Cancel() end
+        resizeTimer = C_Timer.NewTimer(0.1, function()
+            resizeTimer = nil
+            if not currentMember or not detailFrame:IsShown() then return end
+            local totalWidth = scrollChild:GetWidth()
+            if totalWidth < 1 then return end
+            local twoCol = totalWidth >= (COL_MIN_WIDTH * 2)
+            if twoCol ~= lastTwoCol then
+                BuildContent(currentMember)
+            end
+        end)
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -567,6 +588,7 @@ function KS.ShowCharacterDetail(member, fromTab)
     EnsureDetailFrame()
 
     previousTab = fromTab or "roster"
+    currentMember = member
 
     -- Set header
     local cr, cg, cb = GetClassColor(member.classFile)
@@ -591,6 +613,8 @@ function KS.HideCharacterDetail()
     if detailFrame then
         detailFrame:Hide()
         ClearContent()
+        currentMember = nil
+        lastTwoCol = nil
     end
     -- Switch back to previous tab
     if previousTab and KS.SetTab then

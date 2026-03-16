@@ -6,7 +6,9 @@ local TOOLBAR_H = 30
 
 function KS.CreateMainFrame()
     local f = CreateFrame("Frame", "KeySorterMainFrame", UIParent, "BackdropTemplate")
-    f:SetSize(FRAME_WIDTH, FRAME_HEIGHT)
+    local w = KeySorterDB.frameWidth or FRAME_WIDTH
+    local h = KeySorterDB.frameHeight or FRAME_HEIGHT
+    f:SetSize(w, h)
     f:SetFrameStrata("HIGH")
     f:SetMovable(true)
     f:EnableMouse(true)
@@ -338,10 +340,20 @@ function KS.CreateMainFrame()
 
     local resizer = KS.CreateResizeButton(f)
     resizer:SetScript("OnMouseDown", function()
+        -- Re-anchor to TOPLEFT so BOTTOMRIGHT sizing works predictably
+        local left, top = f:GetLeft(), f:GetTop()
+        local parentTop = UIParent:GetTop()
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
         f:StartSizing("BOTTOMRIGHT")
     end)
     resizer:SetScript("OnMouseUp", function()
         f:StopMovingOrSizing()
+        -- Save position and size
+        local point, _, relPoint, x, y = f:GetPoint()
+        KeySorterDB.point = { point, nil, relPoint, x, y }
+        KeySorterDB.frameWidth = f:GetWidth()
+        KeySorterDB.frameHeight = f:GetHeight()
     end)
 
     -- Fade animations (OnUpdate-based, avoids AnimationGroup alpha quirks)
