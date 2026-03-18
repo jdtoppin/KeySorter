@@ -1,0 +1,12 @@
+package-as: KeySorter
+enable-nolib-creation: no
+
+ignore:
+  - .git
+  - .gitignore
+  - .claude
+  - .superpowers
+  - .git-rewrite
+  - docs
+  - scripts
+  - CLAUDE.md
