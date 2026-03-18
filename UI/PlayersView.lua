@@ -197,18 +197,53 @@ local function CreateRow(parent, index)
     row:EnableMouse(true)
     row:RegisterForClicks("LeftButtonUp")
 
+    row._shiftShown = false
     row:SetScript("OnEnter", function(self)
         hoverTex:Show()
         if self._playerData then
-            KS.ShowTooltip(self, "ANCHOR_RIGHT", {
-                "Player Info",
-                {"|cffccccccClick|r to inspect", 0.8, 0.8, 0.8},
-            })
+            if IsShiftKeyDown() then
+                -- Build a member-like object for the shared tooltip
+                local p = self._playerData
+                local member = {
+                    name = p.name, classFile = p.classFile, role = p.role,
+                    score = p.score, ilvl = p.ilvl, avgKeyLevel = 0,
+                    runs = {}, hasBrez = p.hasBrez, hasLust = p.hasLust,
+                    hasShroud = p.hasShroud,
+                }
+                KS.ShowMemberTooltip(self, member)
+                self._shiftShown = true
+            else
+                KS.ShowTooltip(self, "ANCHOR_RIGHT", {
+                    "Player Info",
+                    {"|cffccccccClick|r to inspect", 0.8, 0.8, 0.8},
+                    {"|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5},
+                })
+            end
         end
+        self:SetScript("OnUpdate", function(s)
+            if not s:IsMouseOver() then return end
+            local shiftDown = IsShiftKeyDown()
+            if shiftDown and not s._shiftShown and s._playerData then
+                local p = s._playerData
+                local member = {
+                    name = p.name, classFile = p.classFile, role = p.role,
+                    score = p.score, ilvl = p.ilvl, avgKeyLevel = 0,
+                    runs = {}, hasBrez = p.hasBrez, hasLust = p.hasLust,
+                    hasShroud = p.hasShroud,
+                }
+                KS.ShowMemberTooltip(s, member)
+                s._shiftShown = true
+            elseif not shiftDown and s._shiftShown then
+                KS.HideTooltip()
+                s._shiftShown = false
+            end
+        end)
     end)
     row:SetScript("OnLeave", function(self)
         hoverTex:Hide()
         KS.HideTooltip()
+        self._shiftShown = false
+        self:SetScript("OnUpdate", nil)
     end)
     row:SetScript("OnClick", function(self)
         if not self._playerData then return end

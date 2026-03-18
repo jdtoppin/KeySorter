@@ -204,6 +204,56 @@ function KS.CreateAboutView(parent)
     AddDivider()
 
     ---------------------------------------------------------------------------
+    -- Changelog
+    ---------------------------------------------------------------------------
+    AddHeading("Changelog")
+    AddSpacer(4)
+
+    local changelog = {
+        { version = "3.0.1", entries = {
+            "Player now shows on roster when solo — no group required",
+            "Shift-hover tooltip on History view with dungeon breakdown",
+            "Linked alts shown in tooltips on both Roster and History",
+            "Sidebar tab renamed to History",
+            "Added changelog to About page",
+            "CurseForge packaging support",
+        }},
+        { version = "3.0.0", entries = {
+            "Added Character History view — searchable database of all past players",
+            "Season scores now persist permanently across season transitions",
+            "Sort split into Sort All (re-sort unlocked) and Sort New (unassigned only)",
+            "Confirmation dialog for destructive actions (e.g. clearing history)",
+            "Responsive character detail — columns reflow on window resize",
+            "Addon sync now handles large raids with message chunking",
+            "Synced players show correct class and utilities",
+            "Mark-done toggle uses tick icon instead of lock",
+            "Window resize saves and restores across sessions",
+        }},
+        { version = "2.5.0", entries = {
+            "Responsive character detail columns",
+            "Window resize fix — frame stays within screen bounds",
+            "Total Runs moved to Overview, Timed Key Breakdown renamed",
+            "Scrollbar no longer overlaps close button",
+        }},
+        { version = "2.4.0", entries = {
+            "Sort All and Sort New button split",
+            "Utility balancing pulls highest-scored player from unassigned",
+            "Locked groups fully preserved during reconciliation",
+            "Sort glow dismisses on click, reactivates on new players",
+        }},
+    }
+
+    for _, release in ipairs(changelog) do
+        AddSmallText("|cff00ccffv" .. release.version .. "|r", nil, nil, nil, INDENT)
+        for _, entry in ipairs(release.entries) do
+            AddSmallText("  - " .. entry, 0.65, 0.65, 0.65, INDENT + 4)
+        end
+        AddSpacer(4)
+    end
+
+    AddDivider()
+
+    ---------------------------------------------------------------------------
     -- Credits
     ---------------------------------------------------------------------------
     AddHeading("Credits")

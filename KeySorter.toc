@@ -2,7 +2,7 @@
 ## Title: KeySorter
 ## Notes: Automatically sort raid members into balanced M+ groups
 ## Author: Josiah Toppin
-## Version: 3.0.0
+## Version: 3.0.1
 ## SavedVariables: KeySorterDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 

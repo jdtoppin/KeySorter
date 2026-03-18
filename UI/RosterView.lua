@@ -157,6 +157,23 @@ function KS.ShowMemberTooltip(row, member)
         table.insert(lines, {"Utilities: " .. table.concat(utils, ", "), 0.5, 0.8, 0.5})
     end
 
+    -- Linked alts
+    if KeySorterDB and KeySorterDB.alts then
+        local myTag = KeySorterDB.alts[member.name]
+        if myTag then
+            local altNames = {}
+            for charName, tag in pairs(KeySorterDB.alts) do
+                if tag == myTag and charName ~= member.name then
+                    table.insert(altNames, charName)
+                end
+            end
+            if #altNames > 0 then
+                table.insert(lines, " ")
+                table.insert(lines, {"Alts: " .. table.concat(altNames, ", "), 0.6, 0.6, 0.8})
+            end
+        end
+    end
+
     table.insert(lines, " ")
     table.insert(lines, {"Hold Shift to keep open", 0.4, 0.4, 0.4})
 

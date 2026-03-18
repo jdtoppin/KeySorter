@@ -6,7 +6,12 @@ function KS.ScanRoster()
     local numMembers = GetNumGroupMembers()
     if numMembers == 0 then
         -- Solo: scan just the player
-        KS.ScanUnit("player", UnitName("player"))
+        local name, realm = UnitName("player")
+        if realm and realm ~= "" then
+            name = name .. "-" .. realm
+        end
+        KS.ScanUnit("player", name)
+        if KS.UpdateRosterView then KS.UpdateRosterView() end
         return
     end
 
