@@ -48,6 +48,8 @@ KS.MEDIA = {
     IconGather   = MEDIA_PATH .. "IconGather",
     Warning      = MEDIA_PATH .. "Warning",
     CircleFilled = MEDIA_PATH .. "CircleFilled",
+    IconPlayers  = MEDIA_PATH .. "IconPlayers",
+    Tick         = MEDIA_PATH .. "Tick",
 }
 
 ---------------------------------------------------------------------------
@@ -362,7 +364,8 @@ function KS.ShowTooltip(owner, anchor, lines)
 
     for i, line in ipairs(lines) do
         if type(line) == "table" then
-            if #line == 4 and type(line[2]) == "number" then
+            if #line == 4 and type(line[2]) == "number" and type(line[3]) == "number" and type(line[4]) == "number"
+               and line[2] >= 0 and line[2] <= 1 and line[3] >= 0 and line[3] <= 1 and line[4] >= 0 and line[4] <= 1 then
                 -- { text, r, g, b } — colored single line
                 if i == 1 then
                     tip:AddLine(line[1], line[2], line[3], line[4])
@@ -423,9 +426,15 @@ function KS.CreateScrollFrame(parent, name)
     scrollFrame:SetPoint("BOTTOMRIGHT", -(TRACK_WIDTH + TRACK_GAP * 2), 0)
 
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollChild:SetWidth(math.max(scrollFrame:GetWidth(), 600))
+    scrollChild:SetWidth(math.max(scrollFrame:GetWidth(), 1))
     scrollChild:SetHeight(1)
     scrollFrame:SetScrollChild(scrollChild)
+
+    -- Defer initial width to after layout (scrollFrame width is 0 at creation)
+    C_Timer.After(0, function()
+        local w = scrollFrame:GetWidth()
+        if w > 1 then scrollChild:SetWidth(w) end
+    end)
 
     -- Thin scroll track (with padding to avoid overlapping close/resize buttons)
     local track = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -1085,4 +1094,84 @@ function KS.CreateCheckButton(parent, iconPath, size, callback)
 
     UpdateVisual(true)
     return btn
+end
+
+---------------------------------------------------------------------------
+-- Confirm Dialog (AF-inspired: dimmer overlay + bordered panel + Yes/No)
+---------------------------------------------------------------------------
+local confirmDialog  -- singleton, reused
+
+function KS.ShowConfirmDialog(text, onConfirm, onCancel)
+    if not confirmDialog then
+        -- Dimmer overlay (covers entire screen)
+        local dimmer = CreateFrame("Frame", nil, UIParent)
+        dimmer:SetFrameStrata("FULLSCREEN_DIALOG")
+        dimmer:SetAllPoints(UIParent)
+        dimmer:SetFrameLevel(1)
+        dimmer:EnableMouse(true)  -- block clicks behind
+
+        local dimBg = dimmer:CreateTexture(nil, "BACKGROUND")
+        dimBg:SetAllPoints()
+        dimBg:SetColorTexture(0, 0, 0, 0.5)
+
+        -- Dialog panel
+        local dialog = CreateFrame("Frame", nil, dimmer, "BackdropTemplate")
+        dialog:SetSize(340, 120)
+        dialog:SetPoint("CENTER", 0, 40)
+        dialog:SetFrameLevel(7)
+        dialog:SetBackdrop(BACKDROP)
+        dialog:SetBackdropColor(0.08, 0.08, 0.08, 0.97)
+        dialog:SetBackdropBorderColor(ACCENT_R, ACCENT_G, ACCENT_B, 1)
+
+        -- Message text
+        local msg = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        msg:SetPoint("TOPLEFT", 16, -16)
+        msg:SetPoint("TOPRIGHT", -16, -16)
+        msg:SetJustifyH("CENTER")
+        msg:SetWordWrap(true)
+        dialog._msg = msg
+
+        -- Yes button
+        local yesBtn = KS.CreateButton(dialog, "Yes", "accent", 80, 24)
+        yesBtn:SetAnimatedHighlight(true)
+        yesBtn:SetPoint("BOTTOMLEFT", 16, 12)
+        dialog._yesBtn = yesBtn
+
+        -- No button
+        local noBtn = KS.CreateButton(dialog, "No", "widget", 80, 24)
+        noBtn:SetAnimatedHighlight(true)
+        noBtn:SetPoint("BOTTOMRIGHT", -16, 12)
+        dialog._noBtn = noBtn
+
+        confirmDialog = { dimmer = dimmer, dialog = dialog }
+    end
+
+    local cd = confirmDialog
+    cd.dialog._msg:SetText(text)
+
+    -- Adjust height to fit text
+    local textHeight = cd.dialog._msg:GetStringHeight()
+    cd.dialog:SetHeight(math.max(120, textHeight + 70))
+
+    cd.dialog._yesBtn:SetOnClick(function()
+        cd.dimmer:Hide()
+        if onConfirm then onConfirm() end
+    end)
+
+    cd.dialog._noBtn:SetOnClick(function()
+        cd.dimmer:Hide()
+        if onCancel then onCancel() end
+    end)
+
+    cd.dimmer._fadeIn = true
+    cd.dimmer:SetAlpha(0)
+    cd.dimmer:SetScript("OnUpdate", function(self, dt)
+        local a = self:GetAlpha() + dt / 0.1
+        if a >= 1 then
+            a = 1
+            self:SetScript("OnUpdate", nil)
+        end
+        self:SetAlpha(a)
+    end)
+    cd.dimmer:Show()
 end

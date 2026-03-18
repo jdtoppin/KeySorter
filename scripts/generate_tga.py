@@ -369,6 +369,37 @@ def make_logo_full():
                     pixels.append((0, 0, 0, 0))
     return W, H, pixels
 
+def make_icon_players():
+    """32x32 two-person silhouette icon for Players/History view."""
+    import math
+    S = 32
+    pixels = []
+    for py in range(S):
+        for px in range(S):
+            x, y = px + 0.5, py + 0.5
+            alpha = 0
+
+            # Front person (centered-right)
+            # Head
+            a1 = _aa_pixel(_dist_circle(x, y, 18, 9, 4.5), spread=1.0)
+            # Body (rounded rect torso)
+            a2 = _aa_pixel(_dist_rect(x, y, 10, 16, 16, 12, corner=3.0), spread=1.0)
+            alpha = max(a1, a2)
+
+            # Back person (left, slightly behind)
+            # Head
+            a3 = _aa_pixel(_dist_circle(x, y, 10, 7, 3.5), spread=1.0)
+            # Body
+            a4 = _aa_pixel(_dist_rect(x, y, 4, 13, 12, 10, corner=2.5), spread=1.0)
+            back_alpha = max(a3, a4)
+
+            # Front person occludes back person (only show back where front isn't)
+            if alpha < back_alpha:
+                alpha = back_alpha
+
+            pixels.append((255, 255, 255, min(alpha, 255)))
+    return S, S, pixels
+
 if __name__ == '__main__':
     media_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Media')
     os.makedirs(media_dir, exist_ok=True)
@@ -378,9 +409,10 @@ if __name__ == '__main__':
     write_tga(os.path.join(media_dir, 'ArrowDown.tga'), make_arrow_down())
     write_tga(os.path.join(media_dir, 'Lock.tga'), make_lock())
 
-    # Sidebar icons (32x32 anti-aliased)
-    for name, fn in [('IconRoster', make_icon_roster), ('IconGroups', make_icon_groups),
-                     ('IconSettings', make_icon_settings), ('IconAbout', make_icon_about)]:
+    # Generated sidebar icons (32x32 anti-aliased)
+    # NOTE: IconRoster, IconGroups, IconSettings, IconAbout, IconGather, IconWelcome
+    # are from AbstractFramework — do NOT regenerate those here.
+    for name, fn in [('IconPlayers', make_icon_players)]:
         w, h, px = fn()
         write_tga_sized(os.path.join(media_dir, f'{name}.tga'), w, h, px)
 
@@ -395,4 +427,4 @@ if __name__ == '__main__':
     w, h, px = make_logo_full()
     write_tga_sized(os.path.join(media_dir, 'LogoFull.tga'), w, h, px)
 
-    print(f"Generated 10 TGA files in {media_dir}/")
+    print(f"Generated TGA files in {media_dir}/")

@@ -2,12 +2,14 @@ local addonName, KS = ...
 
 local FRAME_WIDTH = 700
 local FRAME_HEIGHT = 500
+local MAX_FRAME_WIDTH = 1000
+local MAX_FRAME_HEIGHT = 800
 local TOOLBAR_H = 30
 
 function KS.CreateMainFrame()
     local f = CreateFrame("Frame", "KeySorterMainFrame", UIParent, "BackdropTemplate")
-    local w = KeySorterDB.frameWidth or FRAME_WIDTH
-    local h = KeySorterDB.frameHeight or FRAME_HEIGHT
+    local w = math.min(KeySorterDB.frameWidth or FRAME_WIDTH, MAX_FRAME_WIDTH)
+    local h = math.min(KeySorterDB.frameHeight or FRAME_HEIGHT, MAX_FRAME_HEIGHT)
     f:SetSize(w, h)
     f:SetFrameStrata("HIGH")
     f:SetMovable(true)
@@ -15,7 +17,7 @@ function KS.CreateMainFrame()
     f:SetClampedToScreen(true)
 
     local p = KeySorterDB.point
-    f:SetPoint(p[1], UIParent, p[3], p[4], p[5])
+    f:SetPoint(p[1], p[2] or UIParent, p[3], p[4], p[5])
 
     f:SetBackdrop(KS.BACKDROP)
     f:SetBackdropColor(0.08, 0.08, 0.08, 0.92)
@@ -27,7 +29,7 @@ function KS.CreateMainFrame()
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         local point, _, relPoint, x, y = self:GetPoint()
-        KeySorterDB.point = { point, nil, relPoint, x, y }
+        KeySorterDB.point = { point, "UIParent", relPoint, x, y }
     end)
 
     ---------------------------------------------------------------------------
@@ -125,6 +127,13 @@ function KS.CreateMainFrame()
     aboutContent:SetPoint("BOTTOMRIGHT", -8, 8)
     aboutContent:Hide()
     tabContents["about"] = aboutContent
+
+    -- Players content (historical character database)
+    local playersContent = CreateFrame("Frame", nil, contentArea)
+    playersContent:SetPoint("TOPLEFT", 8, -4)
+    playersContent:SetPoint("BOTTOMRIGHT", -8, 8)
+    playersContent:Hide()
+    tabContents["players"] = playersContent
 
     ---------------------------------------------------------------------------
     -- Groups toolbar controls: Sort, Switch
@@ -280,14 +289,16 @@ function KS.CreateMainFrame()
     ---------------------------------------------------------------------------
     local aboutCreated = false
     local settingsCreated = false
+    local currentTab = nil
 
     local function SetTabInternal(tab)
+        currentTab = tab
         for name, content in pairs(tabContents) do
             if name == tab then content:Show() else content:Hide() end
         end
         sidebar:SelectButton(tab)
 
-        -- Lazy-create About and Settings after frame is shown (needs actual width for text wrap)
+        -- Lazy-create views on first visit, refresh on subsequent visits
         if tab == "about" and not aboutCreated then
             aboutCreated = true
             C_Timer.After(0, function()
@@ -298,6 +309,12 @@ function KS.CreateMainFrame()
             C_Timer.After(0, function()
                 KS.CreateSettingsView(settingsContent)
             end)
+        elseif tab == "players" then
+            if KS.IsPlayersViewCreated() then
+                KS.RefreshPlayersView()
+            else
+                KS.CreatePlayersView(playersContent)
+            end
         end
 
         if tab == "groups" then
@@ -328,6 +345,7 @@ function KS.CreateMainFrame()
     KS.groupContent = groupContent
     KS.aboutContent = aboutContent
     KS.settingsContent = settingsContent
+    KS.playersContent = playersContent
 
     KS.CreateRosterView(rosterContent)
     KS.CreateGroupView(groupContent)
@@ -336,7 +354,7 @@ function KS.CreateMainFrame()
 
     -- Resize handle
     f:SetResizable(true)
-    f:SetResizeBounds(540, 350, 1000, 800)
+    f:SetResizeBounds(540, 350, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT)
 
     local resizer = KS.CreateResizeButton(f)
     resizer:SetScript("OnMouseDown", function()
@@ -349,11 +367,15 @@ function KS.CreateMainFrame()
     end)
     resizer:SetScript("OnMouseUp", function()
         f:StopMovingOrSizing()
+        -- Clamp to max bounds before saving
+        local fw = math.min(f:GetWidth(), MAX_FRAME_WIDTH)
+        local fh = math.min(f:GetHeight(), MAX_FRAME_HEIGHT)
+        f:SetSize(fw, fh)
         -- Save position and size
         local point, _, relPoint, x, y = f:GetPoint()
-        KeySorterDB.point = { point, nil, relPoint, x, y }
-        KeySorterDB.frameWidth = f:GetWidth()
-        KeySorterDB.frameHeight = f:GetHeight()
+        KeySorterDB.point = { point, "UIParent", relPoint, x, y }
+        KeySorterDB.frameWidth = fw
+        KeySorterDB.frameHeight = fh
     end)
 
     -- Fade animations (OnUpdate-based, avoids AnimationGroup alpha quirks)
@@ -380,6 +402,7 @@ function KS.CreateMainFrame()
                 StopFade()
                 self:Hide()
                 self:SetAlpha(1)
+                self:SetPropagateKeyboardInput(true)
             end
         end
     end

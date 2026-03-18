@@ -44,6 +44,115 @@ function KS.CreateSettingsView(parent)
     y = y - 28
 
     ---------------------------------------------------------------------------
+    -- General
+    ---------------------------------------------------------------------------
+    AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
+
+    local scaleSlider = KS.CreateSlider(scrollChild, "UI Scale", 0.5, 2.0, 0.1, 200)
+    scaleSlider:SetPoint("TOPLEFT", 16, y)
+    scaleSlider:SetValue(KeySorterDB.uiScale or 1.0)
+    scaleSlider:SetOnChange(function(val)
+        KeySorterDB.uiScale = val
+        if KS.mainFrame then
+            KS.mainFrame:SetScale(val)
+        end
+    end)
+    y = y - 48
+
+    ---------------------------------------------------------------------------
+    -- Announcements
+    ---------------------------------------------------------------------------
+    AddSettingLabel("Announcements", 0, 0.8, 1, "GameFontNormal")
+
+    local function CreateMessageEditor(labelText, dbKey, yStart)
+        local lbl = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        lbl:SetPoint("TOPLEFT", 16, yStart)
+        lbl:SetText(labelText)
+        lbl:SetTextColor(0.7, 0.7, 0.7)
+        yStart = yStart - 16
+
+        local container = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
+        container:SetPoint("TOPLEFT", 16, yStart)
+        container:SetPoint("TOPRIGHT", -16, yStart)
+        container:SetHeight(50)
+        container:SetBackdrop(KS.BACKDROP)
+        container:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
+        container:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
+
+        local sf = CreateFrame("ScrollFrame", nil, container)
+        sf:SetPoint("TOPLEFT", 6, -4)
+        sf:SetPoint("BOTTOMRIGHT", -6, 4)
+
+        local box = CreateFrame("EditBox", nil, sf)
+        C_Timer.After(0, function()
+            local containerWidth = container:GetWidth()
+            if containerWidth > 24 then
+                box:SetWidth(containerWidth - 24)
+            else
+                box:SetWidth(280)
+            end
+        end)
+        box:SetFontObject("GameFontHighlightSmall")
+        box:SetAutoFocus(false)
+        box:SetMultiLine(true)
+        box:SetText(KeySorterDB[dbKey] or "")
+        sf:SetScrollChild(box)
+
+        local function UpdateHeight()
+            local textHeight = box:GetHeight()
+            if textHeight < 1 then textHeight = 50 end
+            local h = math.max(50, math.min(textHeight + 12, 120))
+            container:SetHeight(h)
+        end
+
+        box:SetScript("OnTextChanged", function(self)
+            local numLines = select(2, self:GetText():gsub("\n", "\n")) + 1
+            local lineHeight = select(2, self:GetFont()) or 12
+            self:SetHeight(math.max(numLines * (lineHeight + 2), 40))
+            UpdateHeight()
+        end)
+        box:SetScript("OnEscapePressed", function(self)
+            self:SetText(KeySorterDB[dbKey] or "")
+            self:ClearFocus()
+            UpdateHeight()
+        end)
+
+        C_Timer.After(0, function()
+            local text = box:GetText()
+            if text and #text > 0 then
+                box:SetText(text)
+            end
+            UpdateHeight()
+        end)
+
+        return box, yStart - 58
+    end
+
+    local welcomeBox, yAfterWelcome = CreateMessageEditor("Welcome Message", "welcomeMsg", y)
+    y = yAfterWelcome
+    local gatherBox, yAfterGather = CreateMessageEditor("Gather Message", "gatherMsg", y)
+    y = yAfterGather
+
+    local saveStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    saveStatus:SetTextColor(0, 0.8, 0)
+
+    local saveBtn = KS.CreateButton(scrollChild, "Save Messages", "accent", 100, 22)
+    saveBtn:SetAnimatedHighlight(true)
+    saveBtn:SetPoint("TOPLEFT", 16, y)
+    saveBtn:SetOnClick(function()
+        KeySorterDB.welcomeMsg = welcomeBox:GetText()
+        KeySorterDB.gatherMsg = gatherBox:GetText()
+        welcomeBox:ClearFocus()
+        gatherBox:ClearFocus()
+        saveStatus:SetText("|cff00ff00Saved!|r")
+        C_Timer.After(2, function()
+            saveStatus:SetText("")
+        end)
+    end)
+    saveStatus:SetPoint("LEFT", saveBtn, "RIGHT", 8, 0)
+    y = y - 30
+
+    ---------------------------------------------------------------------------
     -- Preview Mode
     ---------------------------------------------------------------------------
     AddSettingLabel("Preview Mode", 0, 0.8, 1, "GameFontNormal")
@@ -204,114 +313,6 @@ function KS.CreateSettingsView(parent)
 
     y = y - 48
 
-    ---------------------------------------------------------------------------
-    -- General
-    ---------------------------------------------------------------------------
-    AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
-
-    local scaleSlider = KS.CreateSlider(scrollChild, "UI Scale", 0.5, 2.0, 0.1, 200)
-    scaleSlider:SetPoint("TOPLEFT", 16, y)
-    scaleSlider:SetValue(KeySorterDB.uiScale or 1.0)
-    scaleSlider:SetOnChange(function(val)
-        KeySorterDB.uiScale = val
-        if KS.mainFrame then
-            KS.mainFrame:SetScale(val)
-        end
-    end)
-    y = y - 48
-
-    ---------------------------------------------------------------------------
-    -- Announcements
-    ---------------------------------------------------------------------------
-    AddSettingLabel("Announcements", 0, 0.8, 1, "GameFontNormal")
-
-    local function CreateMessageEditor(labelText, dbKey, yStart)
-        local lbl = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        lbl:SetPoint("TOPLEFT", 16, yStart)
-        lbl:SetText(labelText)
-        lbl:SetTextColor(0.7, 0.7, 0.7)
-        yStart = yStart - 16
-
-        -- Container with backdrop (ScrollFrame can't have backdrop directly)
-        local container = CreateFrame("Frame", nil, scrollChild, "BackdropTemplate")
-        container:SetPoint("TOPLEFT", 16, yStart)
-        container:SetPoint("TOPRIGHT", -16, yStart)
-        container:SetHeight(50)
-        container:SetBackdrop(KS.BACKDROP)
-        container:SetBackdropColor(0.08, 0.08, 0.08, 0.9)
-        container:SetBackdropBorderColor(0.25, 0.25, 0.25, 1)
-
-        -- Scrollframe inside container for multi-line editing
-        local sf = CreateFrame("ScrollFrame", nil, container)
-        sf:SetPoint("TOPLEFT", 6, -4)
-        sf:SetPoint("BOTTOMRIGHT", -6, 4)
-
-        local box = CreateFrame("EditBox", nil, sf)
-        box:SetWidth(280)
-        box:SetFontObject("GameFontHighlightSmall")
-        box:SetAutoFocus(false)
-        box:SetMultiLine(true)
-        box:SetText(KeySorterDB[dbKey] or "")
-        sf:SetScrollChild(box)
-
-        -- Auto-resize container to fit text
-        local function UpdateHeight()
-            local textHeight = box:GetHeight()
-            if textHeight < 1 then textHeight = 50 end
-            local h = math.max(50, math.min(textHeight + 12, 120))
-            container:SetHeight(h)
-        end
-
-        box:SetScript("OnTextChanged", function(self)
-            -- Recalculate height based on text
-            local numLines = select(2, self:GetText():gsub("\n", "\n")) + 1
-            local lineHeight = select(2, self:GetFont()) or 12
-            self:SetHeight(math.max(numLines * (lineHeight + 2), 40))
-            UpdateHeight()
-        end)
-        box:SetScript("OnEscapePressed", function(self)
-            self:SetText(KeySorterDB[dbKey] or "")
-            self:ClearFocus()
-            UpdateHeight()
-        end)
-
-        -- Trigger initial height
-        C_Timer.After(0, function()
-            local text = box:GetText()
-            if text and #text > 0 then
-                box:SetText(text)
-            end
-            UpdateHeight()
-        end)
-
-        return box, yStart - 58
-    end
-
-    local welcomeBox, yAfterWelcome = CreateMessageEditor("Welcome Message", "welcomeMsg", y)
-    y = yAfterWelcome
-    local gatherBox, yAfterGather = CreateMessageEditor("Gather Message", "gatherMsg", y)
-    y = yAfterGather
-
-    -- Save button for announcements
-    local saveStatus = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    saveStatus:SetTextColor(0, 0.8, 0)
-
-    local saveBtn = KS.CreateButton(scrollChild, "Save Messages", "accent", 100, 22)
-    saveBtn:SetAnimatedHighlight(true)
-    saveBtn:SetPoint("TOPLEFT", 16, y)
-    saveBtn:SetOnClick(function()
-        KeySorterDB.welcomeMsg = welcomeBox:GetText()
-        KeySorterDB.gatherMsg = gatherBox:GetText()
-        welcomeBox:ClearFocus()
-        gatherBox:ClearFocus()
-        saveStatus:SetText("|cff00ff00Saved!|r")
-        C_Timer.After(2, function()
-            saveStatus:SetText("")
-        end)
-    end)
-    saveStatus:SetPoint("LEFT", saveBtn, "RIGHT", 8, 0)
-    y = y - 30
-
     AddSettingRow("Season Dungeon Pool", "|cff666666Coming Soon|r")
     AddSettingRow("Font", "|cff666666Coming Soon|r")
     AddSettingRow("Font Size", "|cff666666Coming Soon|r")
@@ -325,6 +326,38 @@ function KS.CreateSettingsView(parent)
     AddSettingLabel("Sorting", 0, 0.8, 1, "GameFontNormal")
     AddSettingRow("Swap Threshold", "|cff666666Coming Soon|r")
     AddSettingRow("Group Size", "|cff666666Coming Soon|r")
+
+    y = y - 8
+    AddSettingLabel("Character History", 0, 0.8, 1, "GameFontNormal")
+
+    local charCount = 0
+    if KeySorterDB and KeySorterDB.knownChars then
+        for _ in pairs(KeySorterDB.knownChars) do charCount = charCount + 1 end
+    end
+    local scoreCount = 0
+    if KeySorterDB and KeySorterDB.seasonScores then
+        for _ in pairs(KeySorterDB.seasonScores) do scoreCount = scoreCount + 1 end
+    end
+    AddSettingLabel(format("  %d characters tracked, %d with season scores", charCount, scoreCount), 0.6, 0.6, 0.6, "GameFontHighlightSmall")
+
+    local clearBtn = KS.CreateButton(scrollChild, "Clear All History", "red", 120, 22)
+    clearBtn:SetAnimatedHighlight(true)
+    clearBtn:SetBorderHighlightColor(0.7, 0.15, 0.15, 1)
+    clearBtn:SetPoint("TOPLEFT", 16, y)
+    clearBtn:SetOnClick(function()
+        KS.ShowConfirmDialog(
+            "Are you sure you want to clear all character history?\n\nThis will delete all tracked characters, season scores, notes, and alt links. This cannot be undone.",
+            function()
+                wipe(KeySorterDB.knownChars)
+                wipe(KeySorterDB.seasonScores)
+                wipe(KeySorterDB.notes)
+                wipe(KeySorterDB.alts)
+                wipe(KeySorterDB.ilvlCache)
+                print("|cff00ccffKeySorter|r: Character history cleared.")
+            end
+        )
+    end)
+    y = y - 30
 
     scrollChild:SetHeight(math.abs(y) + 16)
 end

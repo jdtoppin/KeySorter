@@ -18,12 +18,36 @@ local function ProcessInspectQueue()
     if inspectBusy or #inspectQueue == 0 then return end
     if InCombatLockdown() then return end
 
-    local unit = tremove(inspectQueue, 1)
-    if unit and UnitExists(unit) and UnitIsConnected(unit) and CheckInteractDistance(unit, 1) then
-        inspectBusy = true
-        NotifyInspect(unit)
-    elseif #inspectQueue > 0 then
-        C_Timer.After(0.1, ProcessInspectQueue)
+    -- Try each unit in the queue; if one is in range, inspect it
+    local skipped = {}
+    local found = false
+    while #inspectQueue > 0 do
+        local unit = tremove(inspectQueue, 1)
+        if unit and UnitExists(unit) and UnitIsConnected(unit) and CheckInteractDistance(unit, 1) then
+            inspectBusy = true
+            NotifyInspect(unit)
+            -- Re-insert any skipped units back into the queue for later
+            for _, s in ipairs(skipped) do
+                table.insert(inspectQueue, s)
+            end
+            found = true
+            break
+        else
+            -- Out of range or gone — re-queue for retry if still valid
+            if unit and UnitExists(unit) and UnitIsConnected(unit) then
+                table.insert(skipped, unit)
+            end
+        end
+    end
+
+    if not found then
+        -- All remaining units were out of range; put them back and backoff retry
+        for _, s in ipairs(skipped) do
+            table.insert(inspectQueue, s)
+        end
+        if #inspectQueue > 0 then
+            C_Timer.After(2, ProcessInspectQueue)
+        end
     end
 end
 
@@ -93,7 +117,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         local name = ...
         if name == addonName then
             KeySorterDB = KeySorterDB or {}
-            KeySorterDB.point = KeySorterDB.point or { "CENTER", nil, "CENTER", 0, 0 }
+            KeySorterDB.point = KeySorterDB.point or { "CENTER", "UIParent", "CENTER", 0, 0 }
             KeySorterDB.filterIdx = KeySorterDB.filterIdx or 1
             KeySorterDB.minimapPos = KeySorterDB.minimapPos or 225
             KeySorterDB.ilvlCache = KeySorterDB.ilvlCache or {}
@@ -103,7 +127,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.notes = KeySorterDB.notes or {}           -- { ["CharName-Realm"] = "note text" }
             KeySorterDB.alts = KeySorterDB.alts or {}             -- { ["CharName-Realm"] = "playerTag" }
             KeySorterDB.knownChars = KeySorterDB.knownChars or {} -- { ["CharName-Realm"] = { classFile, score, lastSeen } }
-            -- Prune stale entries older than 90 days
+            KeySorterDB.seasonScores = KeySorterDB.seasonScores or {} -- { ["CharName"] = { S1M = 2400, ... } } — never pruned
+            -- Prune stale entries older than 90 days (seasonScores excluded — kept forever)
             local PRUNE_AGE = 90 * 24 * 3600
             local now = time()
             for name, info in pairs(KeySorterDB.knownChars) do
@@ -248,51 +273,85 @@ function KS.ApplyGroups()
         return
     end
 
-    -- Apply complete groups
+    -- Build desired placement: name -> target subgroup index
+    local desired = {}  -- name -> targetSubgroup
     for groupIdx, group in ipairs(KS.groups) do
-        local members = {}
-        if group.tank then table.insert(members, group.tank) end
-        if group.healer then table.insert(members, group.healer) end
-        for _, d in ipairs(group.dps) do table.insert(members, d) end
-
-        for _, member in ipairs(members) do
-            for ri = 1, GetNumGroupMembers() do
-                local raidName = GetRaidRosterInfo(ri)
-                if raidName and raidName == member.name then
-                    local _, _, currentGroup = GetRaidRosterInfo(ri)
-                    if currentGroup ~= groupIdx then
-                        SetRaidSubgroup(ri, groupIdx)
-                    end
-                    break
-                end
-            end
-        end
+        if group.tank then desired[group.tank.name] = groupIdx end
+        if group.healer then desired[group.healer.name] = groupIdx end
+        for _, d in ipairs(group.dps) do desired[d.name] = groupIdx end
     end
-
-    -- Apply incomplete groups (continue numbering after complete groups)
     if KS.incompleteGroups then
         local baseIdx = #KS.groups
         for i, group in ipairs(KS.incompleteGroups) do
             local subgroupIdx = baseIdx + i
-            if subgroupIdx > 8 then break end -- WoW max 8 subgroups
-            local members = {}
-            if group.tank then table.insert(members, group.tank) end
-            if group.healer then table.insert(members, group.healer) end
-            for _, d in ipairs(group.dps) do table.insert(members, d) end
+            if subgroupIdx > 8 then break end
+            if group.tank then desired[group.tank.name] = subgroupIdx end
+            if group.healer then desired[group.healer.name] = subgroupIdx end
+            for _, d in ipairs(group.dps) do desired[d.name] = subgroupIdx end
+        end
+    end
 
-            for _, member in ipairs(members) do
-                for ri = 1, GetNumGroupMembers() do
-                    local raidName = GetRaidRosterInfo(ri)
-                    if raidName and raidName == member.name then
-                        local _, _, currentGroup = GetRaidRosterInfo(ri)
-                        if currentGroup ~= subgroupIdx then
-                            SetRaidSubgroup(ri, subgroupIdx)
+    -- Build current state: name -> { raidIndex, currentSubgroup }
+    local current = {}
+    local numMembers = GetNumGroupMembers()
+    for ri = 1, numMembers do
+        local raidName, _, subgroup = GetRaidRosterInfo(ri)
+        if raidName then
+            current[raidName] = { ri = ri, subgroup = subgroup }
+        end
+    end
+
+    -- Resolve moves using swaps when needed.
+    -- SetRaidSubgroup fails silently when target subgroup is full (5 max).
+    -- SwapRaidSubgroup atomically swaps two players between subgroups.
+    local maxPasses = numMembers  -- safety limit
+    for pass = 1, maxPasses do
+        local moved = false
+        for name, targetSub in pairs(desired) do
+            local info = current[name]
+            if info and info.subgroup ~= targetSub then
+                -- Find someone in the target subgroup who wants to be elsewhere,
+                -- or who has no desired placement (unassigned/"don't care")
+                local swapTarget
+                for otherName, otherInfo in pairs(current) do
+                    if otherInfo.subgroup == targetSub then
+                        if desired[otherName] and desired[otherName] ~= targetSub then
+                            swapTarget = otherName
+                            break
+                        elseif not desired[otherName] then
+                            swapTarget = otherName
+                            -- Keep looking for a better match (someone who actively wants out)
                         end
-                        break
+                    end
+                end
+
+                if swapTarget then
+                    -- Swap the two misplaced players
+                    local otherInfo = current[swapTarget]
+                    SwapRaidSubgroup(info.ri, otherInfo.ri)
+                    -- Update cached state
+                    info.subgroup, otherInfo.subgroup = otherInfo.subgroup, info.subgroup
+                    info.ri, otherInfo.ri = otherInfo.ri, info.ri
+                    moved = true
+                else
+                    -- Target subgroup may have room, try direct move
+                    SetRaidSubgroup(info.ri, targetSub)
+                    -- Re-read raid index (SetRaidSubgroup can change indices)
+                    for ri = 1, numMembers do
+                        local rn, _, sg = GetRaidRosterInfo(ri)
+                        if rn == name then
+                            info.ri = ri
+                            info.subgroup = sg
+                            break
+                        end
+                    end
+                    if info.subgroup == targetSub then
+                        moved = true
                     end
                 end
             end
         end
+        if not moved then break end
     end
 
     print("|cff00ccffKeySorter|r: Groups applied to raid subgroups.")
@@ -549,7 +608,7 @@ function KS.GeneratePreviewData()
             classFile = classFile,
             role = role,
             score = totalScore,
-            previousScore = math.floor(totalScore * (0.4 + math.random() * 0.5)),
+            seasonScores = { [KS.CURRENT_SEASON] = totalScore },
             runs = runs,
             avgKeyLevel = avgKeyLevel,
             numRuns = numRuns,

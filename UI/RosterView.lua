@@ -18,8 +18,7 @@ local headerTexts = {}  -- label FontStrings per column index
 local BASE_COLUMNS = {
     { key = "name",          label = "Name",        baseWidth = 120, minWidth = 60, flex = true, align = "LEFT",   sortable = true },
     { key = "role",          label = "Role",        baseWidth = 40,  minWidth = 30, align = "CENTER", sortable = true },
-    { key = "score",         label = "S1 Score",    baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
-    { key = "previousScore", label = "S3 Score",    baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
+    { key = "score",         label = "Score",       baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
     { key = "ilvl",          label = "iLvl",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
     { key = "avgKeyLevel",   label = "Avg Key",     baseWidth = 68,  minWidth = 50, align = "RIGHT",  sortable = true },
     { key = "numRuns",       label = "Runs",        baseWidth = 52,  minWidth = 40, align = "RIGHT",  sortable = true },
@@ -79,10 +78,12 @@ local function CompareMembers(a, b)
     if type(va) == "string" or type(vb) == "string" then
         va = va or ""
         vb = vb or ""
+        if va == vb then return (a.name or "") < (b.name or "") end
         if sortAsc then return va < vb else return va > vb end
     else
         va = va or 0
         vb = vb or 0
+        if va == vb then return (a.name or "") < (b.name or "") end
         if sortAsc then return va < vb else return va > vb end
     end
 end
@@ -127,8 +128,7 @@ function KS.ShowMemberTooltip(row, member)
 
     -- Score summary
     local ilvlStr = (member.ilvl and member.ilvl > 0) and format("  |  iLvl: %d", member.ilvl) or ""
-    local prevStr = (member.previousScore and member.previousScore > 0) and format("  |  S3: %d", member.previousScore) or ""
-    table.insert(lines, {format("S1: %d%s  |  Avg Key: %.1f%s", member.score, prevStr, member.avgKeyLevel, ilvlStr), 0.7, 0.7, 0.7})
+    table.insert(lines, {format("Score: %d  |  Avg Key: %.1f%s", member.score, member.avgKeyLevel, ilvlStr), 0.7, 0.7, 0.7})
     table.insert(lines, " ")
 
     -- Dungeon breakdown
@@ -590,36 +590,27 @@ function KS.UpdateRosterView()
             row.roleIcon:Hide()
         end
 
-        -- S1 Score (current season, colored by M+ rating)
+        -- Score (current season, colored by M+ rating)
         local sr, sg, sb = KS.GetScoreColor(member.score)
         row.texts[3]:SetText(format("|cff%02x%02x%02x%d|r", sr * 255, sg * 255, sb * 255, member.score))
-
-        -- S3 Score (previous season)
-        local prevScore = member.previousScore or 0
-        if prevScore > 0 then
-            local pr, pg, pb = KS.GetScoreColor(prevScore)
-            row.texts[4]:SetText(format("|cff%02x%02x%02x%d|r", pr * 255, pg * 255, pb * 255, prevScore))
-        else
-            row.texts[4]:SetText("|cff666666—|r")
-        end
 
         -- Item level (colored by quality gradient)
         local ilvl = member.ilvl or 0
         if ilvl > 0 then
             local ir, ig, ib = KS.GetIlvlColor(ilvl)
-            row.texts[5]:SetText(format("|cff%02x%02x%02x%d|r", ir * 255, ig * 255, ib * 255, ilvl))
+            row.texts[4]:SetText(format("|cff%02x%02x%02x%d|r", ir * 255, ig * 255, ib * 255, ilvl))
         else
-            row.texts[5]:SetText("|cff666666—|r")
+            row.texts[4]:SetText("|cff666666—|r")
         end
 
         -- Average key level
-        row.texts[6]:SetText(format("%.1f", member.avgKeyLevel))
+        row.texts[5]:SetText(format("%.1f", member.avgKeyLevel))
 
         -- Total runs (derived from keystoneFivePlus or numRuns)
-        row.texts[7]:SetText(tostring(member.numRuns or 0))
+        row.texts[6]:SetText(tostring(member.numRuns or 0))
 
         -- Class utilities (BR = battle rez, BL = bloodlust, SH = shroud)
-        row.texts[8]:SetText(GetUtilityString(member))
+        row.texts[7]:SetText(GetUtilityString(member))
 
         -- Highlight sub-max-level players (below 90 can't do M+)
         if row._levelWarn then

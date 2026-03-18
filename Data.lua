@@ -1,5 +1,14 @@
 local addonName, KS = ...
 
+-- Season tracking (update these when a new M+ season launches)
+KS.CURRENT_SEASON = "S1M"    -- Season 1 Midnight
+
+-- Display labels for seasons (newest first)
+KS.SEASON_ORDER = { "S1M" }
+KS.SEASON_LABELS = {
+    ["S1M"]  = "S1 Midnight",
+}
+
 -- Class utilities
 KS.BREZ = {
     DRUID = true,

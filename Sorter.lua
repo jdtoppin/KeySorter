@@ -1,5 +1,37 @@
 local addonName, KS = ...
 
+---------------------------------------------------------------------------
+-- Shared helpers to avoid duplication across SortGroups / SortUnassigned / ReconcileGroups
+---------------------------------------------------------------------------
+function KS.CalcGroupsNeeded(totalPlayers)
+    if totalPlayers >= 2 then
+        local needed = 2
+        if totalPlayers > 10 then
+            needed = needed + math.ceil((totalPlayers - 10) / 5)
+        end
+        return needed
+    elseif totalPlayers == 1 then
+        return 1
+    end
+    return 0
+end
+
+function KS.MakeSortComparator()
+    if KS.sortMode == "gear" then
+        return function(a, b)
+            local aIlvl = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
+            local bIlvl = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
+            if aIlvl ~= bIlvl then return aIlvl > bIlvl end
+            return a.score > b.score
+        end
+    else
+        return function(a, b)
+            if a.score ~= b.score then return a.score > b.score end
+            return (a.ilvl or 0) > (b.ilvl or 0)
+        end
+    end
+end
+
 function KS.SortGroups()
     wipe(KS.unassigned)
 
@@ -40,20 +72,7 @@ function KS.SortGroups()
     local unlocked = #tanks + #healers + #dps
 
     -- Step 2: Sort each pool by the selected criteria
-    local sortFunc
-    if KS.sortMode == "gear" then
-        sortFunc = function(a, b)
-            local aIlvl = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
-            local bIlvl = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
-            if aIlvl ~= bIlvl then return aIlvl > bIlvl end
-            return a.score > b.score
-        end
-    else
-        sortFunc = function(a, b)
-            if a.score ~= b.score then return a.score > b.score end
-            return (a.ilvl or 0) > (b.ilvl or 0)
-        end
-    end
+    local sortFunc = KS.MakeSortComparator()
     table.sort(tanks, sortFunc)
     table.sort(healers, sortFunc)
     table.sort(dps, sortFunc)
@@ -113,17 +132,7 @@ function KS.SortGroups()
     end
 
     -- Create empty group cards based on total raid size
-    -- 2 groups minimum, then +1 at 11, 16, 21, 26, 31, 36
-    local totalPlayers = #KS.roster
-    local totalGroupsNeeded = 0
-    if totalPlayers >= 2 then
-        totalGroupsNeeded = 2
-        if totalPlayers > 10 then
-            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
-        end
-    elseif totalPlayers == 1 then
-        totalGroupsNeeded = 1
-    end
+    local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
     local filledGroups = #KS.groups
     local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - filledGroups)
     for i = 1, emptyGroupsNeeded do
@@ -164,20 +173,7 @@ function KS.SortUnassigned()
     end
 
     -- Sort by the selected criteria
-    local sortFunc
-    if KS.sortMode == "gear" then
-        sortFunc = function(a, b)
-            local ai = (a.ilvl and a.ilvl > 0) and a.ilvl or 0
-            local bi = (b.ilvl and b.ilvl > 0) and b.ilvl or 0
-            if ai ~= bi then return ai > bi end
-            return a.score > b.score
-        end
-    else
-        sortFunc = function(a, b)
-            if a.score ~= b.score then return a.score > b.score end
-            return (a.ilvl or 0) > (b.ilvl or 0)
-        end
-    end
+    local sortFunc = KS.MakeSortComparator()
     table.sort(tanks, sortFunc)
     table.sort(healers, sortFunc)
     table.sort(dps, sortFunc)
@@ -226,16 +222,7 @@ function KS.SortUnassigned()
     for i = dpsUsed + 1, #dps do table.insert(KS.unassigned, dps[i]) end
 
     -- Update empty group cards
-    local totalPlayers = #KS.roster
-    local totalGroupsNeeded = 0
-    if totalPlayers >= 2 then
-        totalGroupsNeeded = 2
-        if totalPlayers > 10 then
-            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
-        end
-    elseif totalPlayers == 1 then
-        totalGroupsNeeded = 1
-    end
+    local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
     local filledGroups = #KS.groups
     local nonEmptyIncomplete = 0
     if KS.incompleteGroups then
@@ -355,17 +342,7 @@ function KS.ReconcileGroups()
     KS.unassigned = newUnassigned
 
     -- Update empty group cards based on total raid size
-    -- 2 groups minimum when players exist, then +1 at 11, 16, 21, 26, 31, 36
-    local totalPlayers = #KS.roster
-    local totalGroupsNeeded = 0
-    if totalPlayers >= 2 then
-        totalGroupsNeeded = 2
-        if totalPlayers > 10 then
-            totalGroupsNeeded = totalGroupsNeeded + math.ceil((totalPlayers - 10) / 5)
-        end
-    elseif totalPlayers == 1 then
-        totalGroupsNeeded = 1
-    end
+    local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
     local filledGroups = #KS.groups
 
     -- Count non-empty incomplete groups (ones with members dragged in)

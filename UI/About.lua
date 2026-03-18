@@ -115,24 +115,32 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     AddFeatureCard("Roster View", "Browse all raid members at a glance with sortable columns and quick filters.", {
-        "Sort by name, score, iLvl, avg key, timed runs, role, or utility count",
-        "Filter by score range, role, utility type, or minimum timed runs",
+        "Sort by name, score, iLvl, avg key, runs, role, or utility count",
+        "Filter by score range, role, or utility type",
         "Shift-hover any member for a detailed dungeon breakdown tooltip",
         "Click any member to open their full character profile",
     })
 
     AddFeatureCard("Group Builder", "Form balanced 5-man groups with one click, then fine-tune with drag and drop.", {
-        "Two sort modes: |cffffffffSkill Matched|r (similar skill together) or |cffffffffBalanced|r (snake draft for even distribution)",
+        "Three sort modes: |cffffffffSkill Matched|r, |cffffffffBalanced|r (snake draft), or |cffffffffGear|r (item level)",
+        "|cffffffffSort All|r re-sorts all unlocked groups; |cffffffffSort New|r only places unassigned into empty groups",
         "Battle Rez and Bloodlust coverage balanced automatically across groups",
-        "Drag and drop members between groups to manually adjust",
-        "Lock groups to preserve them during re-sorts",
-        "New players joining go to Unassigned — sort when you're ready",
+        "Drag and drop members between groups — swaps sync to WoW raid subgroups",
+        "Lock groups to preserve them during re-sorts and reconciliation",
+    })
+
+    AddFeatureCard("Character History", "Persistent database of every player who has joined your raids.", {
+        "Browse, search, sort, and filter all historical characters",
+        "Season scores saved permanently — tracks across season transitions",
+        "Add notes and link alts from any view",
+        "Click any character to view their full profile",
     })
 
     AddFeatureCard("Smart Data", "Pulls M+ data from Raider.IO when available, falls back to Blizzard's API.", {
-        "Score, dungeon runs, timed/untimed counts, key level thresholds",
+        "Score, timed key breakdown by bracket, per-dungeon best runs",
         "Item level collected via background inspect (automatic)",
         "Syncs group assignments to raid assistants automatically",
+        "Guild version check notifies members when updates are available",
     })
 
     AddDivider()
@@ -149,9 +157,9 @@ function KS.CreateAboutView(parent)
     AddSmallText("|cffffffffSkill Matched|r — Top DPS to Group 1, next best to Group 2, etc.", 0.65, 0.65, 0.65, INDENT + 12)
     AddSmallText("|cffffffffBalanced|r — Snake draft (1→N, N→1) for even score distribution.", 0.65, 0.65, 0.65, INDENT + 12)
     AddSmallText("|cffffffffGear|r — Sort by item level instead of M+ score (iLvl primary, score tiebreak).", 0.65, 0.65, 0.65, INDENT + 12)
-    AddSmallText("4.  A utility pass swaps DPS between groups to cover Battle Rez and Bloodlust gaps.", 0.75, 0.75, 0.75, INDENT)
-    AddSmallText("5.  Locked groups are fully excluded from sorting and utility balancing.", 0.75, 0.75, 0.75, INDENT)
-    AddSmallText("6.  Extra players (raid not a multiple of 5) go to Unassigned.", 0.75, 0.75, 0.75, INDENT)
+    AddSmallText("4.  A utility pass pulls the highest-scored utility player from unassigned, then swaps DPS between groups to cover Battle Rez and Bloodlust gaps.", 0.75, 0.75, 0.75, INDENT)
+    AddSmallText("5.  Locked groups are fully excluded from sorting, utility balancing, and reconciliation.", 0.75, 0.75, 0.75, INDENT)
+    AddSmallText("6.  Extra players go to Unassigned. Use |cffffffffSort New|r to form groups from unassigned without touching existing groups.", 0.75, 0.75, 0.75, INDENT)
     AddSpacer(4)
     AddDivider()
 
@@ -163,11 +171,12 @@ function KS.CreateAboutView(parent)
 
     local commands = {
         { "/ks",             "Toggle the KeySorter window" },
-        { "/ks sort",        "Sort roster into groups" },
+        { "/ks sort",        "Sort roster into groups (Sort All)" },
         { "/ks apply",       "Move players to raid subgroups" },
         { "/ks announce",    "Post all groups to raid chat" },
         { "/ks announce N",  "Post group N to raid chat" },
         { "/ks sync",        "Force sync groups to assistants" },
+        { "/ks preview",     "Open settings (preview mode)" },
         { "/ks settings",    "Open settings" },
         { "/ks about",       "Show this page" },
         { "/ks help",        "Print commands to chat" },

@@ -37,7 +37,7 @@ function KS.CreateSidebar(parent)
     header:SetScript("OnDragStop", function()
         parent:StopMovingOrSizing()
         local point, _, relPoint, x, y = parent:GetPoint()
-        KeySorterDB.point = { point, nil, relPoint, x, y }
+        KeySorterDB.point = { point, "UIParent", relPoint, x, y }
     end)
 
     -- Header bottom border
@@ -59,6 +59,7 @@ function KS.CreateSidebar(parent)
     local NAV_ITEMS = {
         { key = "roster",   icon = KS.MEDIA.IconRoster,   label = "Roster" },
         { key = "groups",   icon = KS.MEDIA.IconGroups,   label = "Groups" },
+        { key = "players",  icon = KS.MEDIA.IconPlayers,  label = "History" },
         "SEPARATOR",
         { key = "welcome",  icon = KS.MEDIA.IconWelcome,  label = "Welcome", action = true },
         { key = "gather",   icon = KS.MEDIA.IconGather,   label = "Gather", action = true },
@@ -231,6 +232,10 @@ function KS.CreateSidebar(parent)
 
         function KS.UpdateSidebarNotification()
             local needsAttention = (#KS.unassigned > 0 or (#KS.roster > 0 and #KS.groups == 0)) and not KS._sortAcknowledged
+            -- Suppress notification when Groups tab is already selected
+            if needsAttention and selectedKey == "groups" then
+                needsAttention = false
+            end
             if needsAttention then
                 notifDot:Show()
                 notifElapsed = 0

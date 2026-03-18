@@ -40,7 +40,6 @@ local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
 local function ClearContent()
     for _, w in ipairs(contentWidgets) do
         w:Hide()
-        w:SetParent(nil)
     end
     wipe(contentWidgets)
 end
@@ -111,12 +110,23 @@ local function BuildContent(member)
     yL = AddLabelValue(yL, "Class", classDisplay, cr, cg, cb, leftX)
     yL = AddLabelValue(yL, "Role", ROLE_LABELS[member.role] or member.role or "Unknown", nil, nil, nil, leftX)
 
+    -- Show current season score
     local sr, sg, sb = GetScoreColor(member.score)
-    yL = AddLabelValue(yL, "S1 Score", tostring(member.score), sr, sg, sb, leftX)
+    local curLabel = KS.SEASON_LABELS[KS.CURRENT_SEASON] or "Score"
+    yL = AddLabelValue(yL, curLabel, tostring(member.score), sr, sg, sb, leftX)
 
-    if member.previousScore and member.previousScore > 0 then
-        local pr, pg, pb = GetScoreColor(member.previousScore)
-        yL = AddLabelValue(yL, "S3 Score", tostring(member.previousScore), pr, pg, pb, leftX)
+    -- Show all historical season scores from persisted data
+    if member.seasonScores then
+        for _, seasonID in ipairs(KS.SEASON_ORDER) do
+            if seasonID ~= KS.CURRENT_SEASON then
+                local historicalScore = member.seasonScores[seasonID]
+                if historicalScore and historicalScore > 0 then
+                    local hr, hg, hb = GetScoreColor(historicalScore)
+                    local label = KS.SEASON_LABELS[seasonID] or seasonID
+                    yL = AddLabelValue(yL, label, tostring(historicalScore), hr, hg, hb, leftX)
+                end
+            end
+        end
     end
 
     if member.ilvl and member.ilvl > 0 then

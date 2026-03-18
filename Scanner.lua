@@ -22,7 +22,10 @@ function KS.ScanRoster()
         end
         -- Use UnitName for the name to stay consistent with the unit ID
         -- (GetRaidRosterInfo can have different ordering during roster changes)
-        local name = UnitName(unit)
+        local name, realm = UnitName(unit)
+        if realm and realm ~= "" and realm ~= GetRealmName() then
+            name = name .. "-" .. realm
+        end
         if name and UnitIsConnected(unit) then
             KS.ScanUnit(unit, name, i)
         end
@@ -43,8 +46,7 @@ local function ScanFromRaiderIO(unit, entry)
     local mkp = profile.mythicKeystoneProfile
     if not mkp or not mkp.hasRenderableData then return false end
 
-    entry.score = mkp.currentScore or 0
-    entry.previousScore = mkp.previousScore or 0
+    entry.score = mkp.mplusCurrent and mkp.mplusCurrent.score or mkp.currentScore or 0
 
     -- Run counts at key level thresholds
     entry.keystoneFivePlus = mkp.keystoneFivePlus or 0
@@ -154,7 +156,6 @@ function KS.ScanUnit(unit, name, raidIndex)
         role = role,
         level = level,
         score = 0,
-        previousScore = 0,
         runs = {},
         avgKeyLevel = 0,
         numRuns = 0,
@@ -199,15 +200,32 @@ function KS.ScanUnit(unit, name, raidIndex)
     -- Precompute utility count for roster sorting
     entry.utilityCount = (entry.hasBrez and 1 or 0) + (entry.hasLust and 1 or 0) + (entry.hasShroud and 1 or 0)
 
-    -- Track this character in the known characters database
-    if KeySorterDB and KeySorterDB.knownChars and name then
-        KeySorterDB.knownChars[name] = {
-            classFile = classFile,
-            score = entry.score,
-            ilvl = entry.ilvl,
-            role = role,
-            lastSeen = time(),
-        }
+    -- Only persist to DB for real characters (not preview mode)
+    if not KS.previewMode then
+        -- Track this character in the known characters database
+        if KeySorterDB and KeySorterDB.knownChars and name then
+            KeySorterDB.knownChars[name] = {
+                classFile = classFile,
+                score = entry.score,
+                ilvl = entry.ilvl,
+                role = role,
+                lastSeen = time(),
+            }
+        end
+
+        -- Persist season score (kept forever, never pruned)
+        if KeySorterDB and KeySorterDB.seasonScores and name and entry.score > 0 then
+            local ss = KeySorterDB.seasonScores[name] or {}
+            ss[KS.CURRENT_SEASON] = math.max(ss[KS.CURRENT_SEASON] or 0, entry.score)
+            KeySorterDB.seasonScores[name] = ss
+        end
+    end
+
+    -- Attach a copy of season history to entry for UI display (avoid mutating DB)
+    entry.seasonScores = {}
+    local source = KeySorterDB and KeySorterDB.seasonScores and KeySorterDB.seasonScores[name]
+    if source then
+        for k, v in pairs(source) do entry.seasonScores[k] = v end
     end
 
     table.insert(KS.roster, entry)

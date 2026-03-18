@@ -7,6 +7,7 @@ local MEMBER_HEIGHT = 18
 
 local scrollFrame, scrollChild
 local groupCards = {}
+local cardPool = {}
 local noDataText
 
 ---------------------------------------------------------------------------
@@ -125,6 +126,33 @@ local function StartDrag(line)
         line._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
     end
     line._highlightTex:Show()
+
+    -- Set OnUpdate on all member lines for drag cursor + drop target highlighting
+    for _, ml in ipairs(allMemberLines) do
+        ml:SetScript("OnUpdate", function(self)
+            UpdateDragPosition()
+            if dragSource and self ~= dragSource.sourceLine then
+                if self:IsMouseOver() then
+                    if not self._highlightTex then
+                        self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
+                        self._highlightTex:SetAllPoints()
+                        self._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
+                    end
+                    self._highlightTex:Show()
+                    if not self._dropBorder then
+                        self._dropBorder = self:CreateTexture(nil, "OVERLAY", nil, -1)
+                        self._dropBorder:SetPoint("TOPLEFT", -1, 1)
+                        self._dropBorder:SetPoint("BOTTOMRIGHT", 1, -1)
+                        self._dropBorder:SetColorTexture(0, 0.8, 1, 0.4)
+                    end
+                    self._dropBorder:Show()
+                else
+                    if self._highlightTex then self._highlightTex:Hide() end
+                    if self._dropBorder then self._dropBorder:Hide() end
+                end
+            end
+        end)
+    end
 end
 
 local function UpdateDragPosition()
@@ -209,8 +237,8 @@ local function CompactDpsArray(groupIdx)
     local group = ResolveGroup(groupIdx)
     if not group then return end
     local compacted = {}
-    for _, v in pairs(group.dps) do
-        if v then table.insert(compacted, v) end
+    for i = 1, #group.dps do
+        if group.dps[i] then table.insert(compacted, group.dps[i]) end
     end
     group.dps = compacted
 end
@@ -221,19 +249,23 @@ local function FlashLine(line)
         line._flashTex = line:CreateTexture(nil, "OVERLAY")
         line._flashTex:SetAllPoints()
         line._flashTex:SetColorTexture(0, 0.8, 1, 0)
-
-        line._flashAG = line._flashTex:CreateAnimationGroup()
-        local fade = line._flashAG:CreateAnimation("Alpha")
-        fade:SetFromAlpha(0.5)
-        fade:SetToAlpha(0)
-        fade:SetDuration(0.3)
-        fade:SetSmoothing("OUT")
-        line._flashAG:SetScript("OnFinished", function()
-            line._flashTex:SetAlpha(0)
-        end)
     end
     line._flashTex:SetAlpha(0.5)
-    line._flashAG:Play()
+    line._flashTex:Show()
+    local elapsed = 0
+    local duration = 0.3
+    line:SetScript("OnUpdate", function(self, dt)
+        elapsed = elapsed + dt
+        local progress = elapsed / duration
+        if progress >= 1 then
+            self._flashTex:SetAlpha(0)
+            self._flashTex:Hide()
+            self:SetScript("OnUpdate", nil)
+        else
+            -- Ease out: decelerate
+            self._flashTex:SetAlpha(0.5 * (1 - progress * progress))
+        end
+    end)
 end
 
 local function StopDrag(line)
@@ -243,6 +275,13 @@ local function StopDrag(line)
     if line then
         if line._dragOverlay then line._dragOverlay:Hide() end
         if line._highlightTex then line._highlightTex:Hide() end
+    end
+
+    -- Clear OnUpdate handlers and highlights from all member lines
+    for _, ml in ipairs(allMemberLines) do
+        ml:SetScript("OnUpdate", nil)
+        if ml._highlightTex then ml._highlightTex:Hide() end
+        if ml._dropBorder then ml._dropBorder:Hide() end
     end
 
     if not dragSource then return end
@@ -365,55 +404,11 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
         line:SetScript("OnDragStart", function(self) StartDrag(self) end)
         line:SetScript("OnDragStop", function(self) StopDrag(self) end)
 
-        -- Update cursor position while dragging
-        line:SetScript("OnUpdate", function(self)
-            -- Drag cursor follow
-            UpdateDragPosition()
-
-            -- Shift-hover tooltip (only when not dragging)
-            if not dragSource and self:IsMouseOver() then
-                if IsShiftKeyDown() and not self._shiftShown then
-                    KS.ShowMemberTooltip(self, self._member)
-                    self._shiftShown = true
-                elseif not IsShiftKeyDown() and self._shiftShown then
-                    self._shiftShown = false
-                    KS.ShowTooltip(self, "ANCHOR_RIGHT", {
-                        "Member Actions",
-                        {"|cffccccccLeft-click drag|r to move", 0.8, 0.8, 0.8},
-                        {"|cffccccccRight-click|r to inspect", 0.8, 0.8, 0.8},
-                        {"|cffccccccShift-hover|r for details", 0.5, 0.5, 0.5},
-                    })
-                end
-            end
-
-            -- Drop target highlighting with border
-            if dragSource and self ~= dragSource.sourceLine then
-                if self:IsMouseOver() then
-                    if not self._highlightTex then
-                        self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
-                        self._highlightTex:SetAllPoints()
-                        self._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
-                    end
-                    self._highlightTex:Show()
-                    -- Cyan border on drop target
-                    if not self._dropBorder then
-                        self._dropBorder = self:CreateTexture(nil, "OVERLAY", nil, -1)
-                        self._dropBorder:SetPoint("TOPLEFT", -1, 1)
-                        self._dropBorder:SetPoint("BOTTOMRIGHT", 1, -1)
-                        self._dropBorder:SetColorTexture(0, 0.8, 1, 0.4)
-                    end
-                    self._dropBorder:Show()
-                else
-                    if self._highlightTex then self._highlightTex:Hide() end
-                    if self._dropBorder then self._dropBorder:Hide() end
-                end
-            end
-        end)
-
         line:SetScript("OnEnter", function(self)
             if not dragSource then
                 if IsShiftKeyDown() and self._member then
                     KS.ShowMemberTooltip(self, self._member)
+                    self._shiftShown = true
                 else
                     KS.ShowTooltip(self, "ANCHOR_RIGHT", {
                         "Member Actions",
@@ -436,28 +431,7 @@ local function CreateMemberLine(parent, yOffset, label, member, groupIdx, slot, 
 
     elseif groupIdx then
         -- Empty slot: can receive drops but not initiate drag
-        line:SetScript("OnUpdate", function(self)
-            if dragSource and dragSource.sourceLine ~= self then
-                if self:IsMouseOver() then
-                    if not self._highlightTex then
-                        self._highlightTex = self:CreateTexture(nil, "BACKGROUND")
-                        self._highlightTex:SetAllPoints()
-                        self._highlightTex:SetColorTexture(0, 0.8, 1, 0.15)
-                    end
-                    self._highlightTex:Show()
-                    if not self._dropBorder then
-                        self._dropBorder = self:CreateTexture(nil, "OVERLAY", nil, -1)
-                        self._dropBorder:SetPoint("TOPLEFT", -1, 1)
-                        self._dropBorder:SetPoint("BOTTOMRIGHT", 1, -1)
-                        self._dropBorder:SetColorTexture(0, 0.8, 1, 0.4)
-                    end
-                    self._dropBorder:Show()
-                else
-                    if self._highlightTex then self._highlightTex:Hide() end
-                    if self._dropBorder then self._dropBorder:Hide() end
-                end
-            end
-        end)
+        -- OnUpdate for drop highlighting is set dynamically in StartDrag
         line:SetScript("OnLeave", function(self)
             if self._highlightTex then self._highlightTex:Hide() end
             if self._dropBorder then self._dropBorder:Hide() end
@@ -479,7 +453,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
         {0.12, 0.12, 0.12, 0.95}, {0.3, 0.3, 0.3, 1})
     card:SetPoint("TOPLEFT", xOffset, yOffset)
 
-    -- Lock toggle — CheckButton with lock icon
+    -- Mark Done toggle — CheckButton with tick icon
     local lockBtn = KS.CreateCheckButton(card, nil, 14, function(checked)
         group.locked = checked
         if checked then
@@ -488,7 +462,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
             card:SetBorderColor(0.3, 0.3, 0.3, 1)
         end
     end)
-    lockBtn._icon:SetTexture(KS.MEDIA.Lock)
+    lockBtn._icon:SetTexture(KS.MEDIA.Tick)
     lockBtn:SetPoint("TOPLEFT", 6, -4)
     lockBtn:SetChecked(group.locked)
     if group.locked then
@@ -646,8 +620,8 @@ end
 function KS.UpdateGroupView()
     if not scrollChild then return end
 
-    -- Clear existing cards — hide all children explicitly to prevent visual artifacts
-    local function CleanupFrame(frame)
+    -- Move existing cards to pool for reuse — hide all children to prevent visual artifacts
+    local function ReturnToPool(frame)
         for _, child in ipairs({ frame:GetChildren() }) do
             child:Hide()
             child:ClearAllPoints()
@@ -657,11 +631,11 @@ function KS.UpdateGroupView()
         end
         frame:Hide()
         frame:ClearAllPoints()
-        frame:SetParent(nil)
+        table.insert(cardPool, frame)
     end
 
     for _, card in ipairs(groupCards) do
-        CleanupFrame(card)
+        ReturnToPool(card)
     end
     wipe(groupCards)
     wipe(allMemberLines)
