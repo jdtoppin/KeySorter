@@ -292,13 +292,31 @@ function KS.ApplyGroups()
     end
 
     -- Build current state: name -> { raidIndex, currentSubgroup }
+    -- GetRaidRosterInfo may or may not include realm; normalize to match member names
     local current = {}
     local numMembers = GetNumGroupMembers()
     for ri = 1, numMembers do
         local raidName, _, subgroup = GetRaidRosterInfo(ri)
         if raidName then
             current[raidName] = { ri = ri, subgroup = subgroup }
+            -- Also index by short name (without realm) for cross-format matching
+            local shortName = raidName:match("^([^-]+)")
+            if shortName and shortName ~= raidName then
+                current[shortName] = current[raidName]
+            end
         end
+    end
+
+    -- Also index desired by short name for matching
+    local desiredShort = {}
+    for name, sub in pairs(desired) do
+        local shortName = name:match("^([^-]+)")
+        if shortName and shortName ~= name then
+            desiredShort[shortName] = sub
+        end
+    end
+    for name, sub in pairs(desiredShort) do
+        if not desired[name] then desired[name] = sub end
     end
 
     -- Resolve moves using swaps when needed.

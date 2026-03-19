@@ -2,9 +2,10 @@
 ## Title: KeySorter
 ## Notes: Automatically sort raid members into balanced M+ groups
 ## Author: Josiah Toppin
-## Version: 3.0.1
+## Version: 3.0.2
 ## SavedVariables: KeySorterDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
+## OptionalDeps: RaiderIO
 
 Data.lua
 Widgets.lua

@@ -210,6 +210,10 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.0.2", entries = {
+            "Fixed drag-and-drop error in group view",
+            "Fixed Sort not moving players to correct raid subgroups",
+        }},
         { version = "3.0.1", entries = {
             "Player now shows on roster when solo — no group required",
             "Shift-hover tooltip on History view with dungeon breakdown",

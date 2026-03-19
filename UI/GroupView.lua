@@ -86,6 +86,14 @@ local function GetOrCreateDragCursor()
     return dragCursor
 end
 
+local function UpdateDragPosition()
+    if not dragCursor or not dragCursor:IsShown() then return end
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    dragCursor:ClearAllPoints()
+    dragCursor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + 12, y / scale + 4)
+end
+
 local function StartDrag(line)
     if not line._member then return end
 
@@ -153,15 +161,6 @@ local function StartDrag(line)
             end
         end)
     end
-end
-
-local function UpdateDragPosition()
-    if not dragCursor or not dragCursor:IsShown() then return end
-    local x, y = GetCursorPosition()
-    local scale = UIParent:GetEffectiveScale()
-    dragCursor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
-    dragCursor:ClearAllPoints()
-    dragCursor:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + 12, y / scale + 4)
 end
 
 local function FindDropTarget()
