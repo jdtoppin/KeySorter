@@ -205,8 +205,8 @@ function KS.ScanUnit(unit, name, raidIndex)
     -- Precompute utility count for roster sorting
     entry.utilityCount = (entry.hasBrez and 1 or 0) + (entry.hasLust and 1 or 0) + (entry.hasShroud and 1 or 0)
 
-    -- Only persist to DB for real characters (not preview mode)
-    if not KS.previewMode then
+    -- Only persist to DB when tracking is enabled (raid + permitted + confirmed)
+    if not KS.previewMode and KS.trackingEnabled then
         -- Track this character in the known characters database
         if KeySorterDB and KeySorterDB.knownChars and name then
             KeySorterDB.knownChars[name] = {

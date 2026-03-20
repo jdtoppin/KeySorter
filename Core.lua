@@ -6,6 +6,8 @@ KS.incompleteGroups = {}
 KS.unassigned = {}
 KS.previewMode = false
 KS.previewPlayerCount = 25
+KS.trackingEnabled = false   -- true when user confirms tracking for this raid session
+KS._trackingPrompted = false -- true after the prompt has been shown (once per raid)
 
 ---------------------------------------------------------------------------
 -- Inspect queue: background ilvl collection for raid members
@@ -17,6 +19,11 @@ local INSPECT_INTERVAL = 1.5 -- seconds between inspects
 local function ProcessInspectQueue()
     if inspectBusy or #inspectQueue == 0 then return end
     if InCombatLockdown() then return end
+    -- Don't inspect while the player has the inspect frame open
+    if InspectFrame and InspectFrame:IsShown() then
+        C_Timer.After(2, ProcessInspectQueue)
+        return
+    end
 
     -- Try each unit in the queue; if one is in range, inspect it
     local skipped = {}
@@ -76,6 +83,13 @@ local function QueueAllMembers()
 end
 
 local function OnInspectReady(guid)
+    -- If the player has the inspect frame open, don't interfere —
+    -- let WoW's UI handle it and skip our processing entirely
+    if InspectFrame and InspectFrame:IsShown() then
+        inspectBusy = false
+        return
+    end
+
     inspectBusy = false
 
     -- Find the unit and update ilvl in roster
@@ -159,6 +173,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if GetNumGroupMembers() == 0 then
             if KS._scanTimer then KS._scanTimer:Cancel(); KS._scanTimer = nil end
             KS._helloSent = false
+            KS.trackingEnabled = false
+            KS._trackingPrompted = false
             wipe(KS.roster)
             wipe(KS.groups)
             wipe(KS.incompleteGroups)
@@ -187,14 +203,30 @@ frame:SetScript("OnEvent", function(self, event, ...)
             elseif not IsInRaid() then
                 KS._helloSent = false
             end
+            -- Tracking prompt: when in a raid as leader/assist, ask once to enable tracking
+            if IsInRaid() and not KS._trackingPrompted and not KS.trackingEnabled and KS.IsPermitted() then
+                KS._trackingPrompted = true
+                KS.ShowConfirmDialog(
+                    "You are a raid leader/assistant.\n\nTrack this raid for character history?",
+                    function()
+                        KS.trackingEnabled = true
+                        print("|cff00ccffKeySorter|r: Character tracking |cff00ff00enabled|r for this raid.")
+                        -- Re-scan to persist the roster now that tracking is on
+                        KS.ScanRoster()
+                    end,
+                    function()
+                        KS.trackingEnabled = false
+                        print("|cff00ccffKeySorter|r: Character tracking |cffff4444disabled|r for this raid.")
+                    end
+                )
+            end
+
             -- Reconcile: remove leavers, add joiners to unassigned, update empty group cards
             KS.ReconcileGroups()
             if KS.UpdateGroupView then KS.UpdateGroupView() end
             if KS.UpdateSortGlow then KS.UpdateSortGlow() end
             if KS.UpdateSidebarNotification then KS.UpdateSidebarNotification() end
-            if KS.mainFrame and KS.mainFrame:IsShown() then
-                KS.UpdatePermissionState()
-            end
+            KS.UpdatePermissionState()
             -- Queue inspects for ilvl when members join
             QueueAllMembers()
         end)
@@ -209,7 +241,10 @@ function KS.IsPermitted()
     if not IsInRaid() then return true end
     -- Direct leader check (always reliable)
     if UnitIsGroupLeader("player") then return true end
-    -- Check assistant rank via raid roster info
+    -- IsRaidLeader/IsRaidOfficer are reliable even right after promotion
+    if IsRaidLeader and IsRaidLeader() then return true end
+    if IsRaidOfficer and IsRaidOfficer() then return true end
+    -- Fallback: check rank via raid roster info
     local raidIdx = UnitInRaid("player")
     if not raidIdx then return true end
     local _, rank = GetRaidRosterInfo(raidIdx + 1)

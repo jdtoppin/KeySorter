@@ -210,6 +210,13 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.0.3", entries = {
+            "Raid tracking prompt — confirm whether to track character history per raid",
+            "Only tracks history when you are raid leader/assistant and confirm",
+            "Fixed announce/welcome/gather not working after mid-raid promotion",
+            "Fixed inspecting players showing blank gear pane",
+            "Red-styled buttons now fill red on click instead of cyan",
+        }},
         { version = "3.0.2", entries = {
             "Fixed drag-and-drop error in group view",
             "Fixed Sort not moving players to correct raid subgroups",
@@ -262,7 +269,7 @@ function KS.CreateAboutView(parent)
     ---------------------------------------------------------------------------
     AddHeading("Credits")
     AddSpacer(4)
-    AddSmallText("Created by |cffffffffJosiah Toppin|r", 0.7, 0.7, 0.7, INDENT)
+    AddSmallText("Created by |cffffffffMoodibs|r", 0.7, 0.7, 0.7, INDENT)
     AddSmallText("UI inspired by |cffffffffAbstractFramework|r by enderneko (GPLv3)", 0.7, 0.7, 0.7, INDENT)
     AddSmallText("Licensed under |cffffffffGNU General Public License v3.0|r", 0.7, 0.7, 0.7, INDENT)
 

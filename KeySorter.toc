@@ -1,8 +1,8 @@
 ## Interface: 120001
 ## Title: KeySorter
 ## Notes: Automatically sort raid members into balanced M+ groups
-## Author: Josiah Toppin
-## Version: 3.0.2
+## Author: Moodibs
+## Version: 3.0.3
 ## SavedVariables: KeySorterDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## OptionalDeps: RaiderIO

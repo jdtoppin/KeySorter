@@ -235,9 +235,16 @@ function KS.CreateButton(parent, text, colorName, width, height)
 
     function btn:SetBorderHighlightColor(r, g, b, a)
         if r then
+            self._borderHighlightR = r
+            self._borderHighlightG = g
+            self._borderHighlightB = b
             local hc = { r, g, b, a or 1 }
             self._highlightBorder = function()
                 self:SetBackdropBorderColor(unpack(hc))
+            end
+            -- Update animated fill color if it already exists
+            if self._animTex then
+                self._animTex:SetColorTexture(r, g, b, 0.5)
             end
             self._unhighlightBorder = function()
                 self:SetBackdropBorderColor(unpack(self._borderColor))
@@ -255,7 +262,12 @@ function KS.CreateButton(parent, text, colorName, width, height)
             tex:SetPoint("BOTTOMLEFT", 1, 1)
             tex:SetPoint("BOTTOMRIGHT", -1, 1)
             tex:SetHeight(1)
-            tex:SetColorTexture(ACCENT_R, ACCENT_G, ACCENT_B, 0.5)
+            -- Use button's highlight color if set, otherwise accent
+            local hr, hg, hb = ACCENT_R, ACCENT_G, ACCENT_B
+            if self._borderHighlightR then
+                hr, hg, hb = self._borderHighlightR, self._borderHighlightG, self._borderHighlightB
+            end
+            tex:SetColorTexture(hr, hg, hb, 0.5)
             self._animTex = tex
         end
     end
