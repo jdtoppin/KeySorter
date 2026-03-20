@@ -6,6 +6,7 @@
 ## SavedVariables: KeySorterDB
 ## IconTexture: Interface\Icons\INV_Misc_Key_15
 ## OptionalDeps: RaiderIO
+## X-Curse-Project-ID: 1489588
 
 Data.lua
 Widgets.lua
