@@ -16,12 +16,20 @@ local inspectQueue = {}
 local inspectBusy = false
 local INSPECT_INTERVAL = 1.5 -- seconds between inspects
 
+local function IsPlayerInspecting()
+    -- InspectFrame is load-on-demand; it may not exist yet
+    if InspectFrame and InspectFrame:IsShown() then return true end
+    -- Also check if PlayerSpellsFrame is inspecting (talent inspect)
+    if PlayerSpellsFrame and PlayerSpellsFrame.IsInspecting and PlayerSpellsFrame:IsInspecting() then return true end
+    return false
+end
+
 local function ProcessInspectQueue()
     if inspectBusy or #inspectQueue == 0 then return end
     if InCombatLockdown() then return end
-    -- Don't inspect while the player has the inspect frame open
-    if InspectFrame and InspectFrame:IsShown() then
-        C_Timer.After(2, ProcessInspectQueue)
+    -- Don't inspect while the player is manually inspecting someone
+    if IsPlayerInspecting() then
+        C_Timer.After(3, ProcessInspectQueue)
         return
     end
 
@@ -83,23 +91,25 @@ local function QueueAllMembers()
 end
 
 local function OnInspectReady(guid)
-    -- If the player has the inspect frame open, don't interfere —
-    -- let WoW's UI handle it and skip our processing entirely
-    if InspectFrame and InspectFrame:IsShown() then
+    -- If the player is manually inspecting, this event is for them — ignore it entirely
+    if IsPlayerInspecting() then
         inspectBusy = false
+        -- Retry queue later
+        if #inspectQueue > 0 then
+            C_Timer.After(3, ProcessInspectQueue)
+        end
         return
     end
 
     inspectBusy = false
 
-    -- Find the unit and update ilvl in roster
+    -- This was our background inspect — read the ilvl data
     if C_PaperDollInfo and C_PaperDollInfo.GetInspectItemLevel then
         for _, member in ipairs(KS.roster) do
             if member.unit and UnitExists(member.unit) and UnitGUID(member.unit) == guid then
                 local inspectIlvl = C_PaperDollInfo.GetInspectItemLevel(member.unit)
                 if inspectIlvl and inspectIlvl > 0 then
                     member.ilvl = math.floor(inspectIlvl)
-                    -- Cache for future sessions
                     if KeySorterDB and KeySorterDB.ilvlCache and member.name then
                         KeySorterDB.ilvlCache[member.name] = member.ilvl
                     end
@@ -109,8 +119,6 @@ local function OnInspectReady(guid)
             end
         end
     end
-
-    ClearInspectPlayer()
 
     -- Continue processing queue
     if #inspectQueue > 0 then
@@ -239,15 +247,14 @@ end)
 function KS.IsPermitted()
     if KS.previewMode then return true end
     if not IsInRaid() then return true end
-    -- Direct leader check (always reliable)
+    -- Direct leader check
     if UnitIsGroupLeader("player") then return true end
-    -- IsRaidLeader/IsRaidOfficer are reliable even right after promotion
-    if IsRaidLeader and IsRaidLeader() then return true end
-    if IsRaidOfficer and IsRaidOfficer() then return true end
+    -- Assistant check (Midnight API)
+    if UnitIsGroupAssistant and UnitIsGroupAssistant("player") then return true end
     -- Fallback: check rank via raid roster info
     local raidIdx = UnitInRaid("player")
     if not raidIdx then return true end
-    local _, rank = GetRaidRosterInfo(raidIdx + 1)
+    local _, rank = GetRaidRosterInfo(raidIdx)
     return rank and rank > 0
 end
 

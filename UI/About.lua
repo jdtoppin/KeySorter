@@ -210,6 +210,11 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.0.4", entries = {
+            "Fixed permission checks failing for raid assistants",
+            "Fixed inspecting players showing blank gear pane",
+            "Updated API calls to use Midnight-compatible functions",
+        }},
         { version = "3.0.3", entries = {
             "Raid tracking prompt — confirm whether to track character history per raid",
             "Only tracks history when you are raid leader/assistant and confirm",
