@@ -402,7 +402,9 @@ function KS.CreateMainFrame()
                 StopFade()
                 self:Hide()
                 self:SetAlpha(1)
-                self:SetPropagateKeyboardInput(true)
+                if not InCombatLockdown() then
+                    self:SetPropagateKeyboardInput(true)
+                end
             end
         end
     end
@@ -438,10 +440,41 @@ function KS.CreateMainFrame()
 
     SetTabInternal("roster")
 
+    -- Combat overlay: blocks interaction and shows a message during combat
+    local combatOverlay = CreateFrame("Frame", nil, f)
+    combatOverlay:SetAllPoints()
+    combatOverlay:SetFrameLevel(f:GetFrameLevel() + 50)
+    combatOverlay:EnableMouse(true) -- blocks all clicks
+    combatOverlay:Hide()
+
+    local combatBg = combatOverlay:CreateTexture(nil, "BACKGROUND")
+    combatBg:SetAllPoints()
+    combatBg:SetColorTexture(0, 0, 0, 0.7)
+
+    local combatText = combatOverlay:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    combatText:SetPoint("CENTER", 0, 0)
+    combatText:SetText("No changes can be made during combat;\nplease wait until combat ends.")
+    combatText:SetTextColor(0.8, 0.2, 0.2)
+
+    local combatFrame = CreateFrame("Frame")
+    combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED") -- entering combat
+    combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")  -- leaving combat
+    combatFrame:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_REGEN_DISABLED" then
+            if f:IsShown() then combatOverlay:Show() end
+        else
+            combatOverlay:Hide()
+        end
+    end)
+    f:HookScript("OnShow", function()
+        if InCombatLockdown() then combatOverlay:Show() end
+    end)
+
     -- Handle ESC to close (don't use UISpecialFrames — it conflicts with fade animations)
     f:EnableKeyboard(true)
     f:SetPropagateKeyboardInput(true)
     f:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
         if key == "ESCAPE" and self:IsShown() then
             self:SetPropagateKeyboardInput(false)
             self:FadeOut()

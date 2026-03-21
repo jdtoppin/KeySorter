@@ -157,19 +157,25 @@ function KS.ShowMemberTooltip(row, member)
         table.insert(lines, {"Utilities: " .. table.concat(utils, ", "), 0.5, 0.8, 0.5})
     end
 
-    -- Linked alts
+    -- Linked alts (class colored)
     if KeySorterDB and KeySorterDB.alts then
         local myTag = KeySorterDB.alts[member.name]
         if myTag then
-            local altNames = {}
+            local altParts = {}
             for charName, tag in pairs(KeySorterDB.alts) do
                 if tag == myTag and charName ~= member.name then
-                    table.insert(altNames, charName)
+                    local info = KeySorterDB.knownChars and KeySorterDB.knownChars[charName]
+                    local cc = info and KS.CLASS_COLORS[info.classFile]
+                    if cc then
+                        table.insert(altParts, format("|cff%02x%02x%02x%s|r", cc.r * 255, cc.g * 255, cc.b * 255, charName))
+                    else
+                        table.insert(altParts, charName)
+                    end
                 end
             end
-            if #altNames > 0 then
+            if #altParts > 0 then
                 table.insert(lines, " ")
-                table.insert(lines, {"Alts: " .. table.concat(altNames, ", "), 0.6, 0.6, 0.8})
+                table.insert(lines, {"Alts: " .. table.concat(altParts, ", "), 0.6, 0.6, 0.8})
             end
         end
     end

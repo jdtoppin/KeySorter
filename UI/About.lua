@@ -210,6 +210,11 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.0.5", entries = {
+            "Combat lockdown overlay — blocks interaction with a message during combat",
+            "Alt names in tooltips now shown in class colors",
+            "Fixed protected function error during combat",
+        }},
         { version = "3.0.4", entries = {
             "Fixed permission checks failing for raid assistants",
             "Fixed inspecting players showing blank gear pane",
