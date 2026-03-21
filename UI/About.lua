@@ -210,6 +210,11 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.1.0", entries = {
+            "Sort All now forms incomplete groups from leftover players instead of dumping all to unassigned",
+            "Sort New also distributes leftovers into incomplete groups",
+            "Incomplete groups show visible empty slots for missing roles",
+        }},
         { version = "3.0.5", entries = {
             "Combat lockdown overlay — blocks interaction with a message during combat",
             "Alt names in tooltips now shown in class colors",

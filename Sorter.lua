@@ -108,10 +108,51 @@ function KS.SortGroups()
         end
     end
 
-    -- Extras → unassigned (raid lead drags them into empty group cards)
-    for i = numCompleteGroups + 1, #tanks do table.insert(KS.unassigned, tanks[i]) end
-    for i = numCompleteGroups + 1, #healers do table.insert(KS.unassigned, healers[i]) end
-    for i = dpsToAssign + 1, #dps do table.insert(KS.unassigned, dps[i]) end
+    -- Collect leftover players after complete groups
+    local extraTanks = {}
+    local extraHealers = {}
+    local extraDps = {}
+    for i = numCompleteGroups + 1, #tanks do table.insert(extraTanks, tanks[i]) end
+    for i = numCompleteGroups + 1, #healers do table.insert(extraHealers, healers[i]) end
+    for i = dpsToAssign + 1, #dps do table.insert(extraDps, dps[i]) end
+
+    -- Form incomplete groups from leftovers (fill slots as available)
+    local incompleteGroups = {}
+    local totalExtras = #extraTanks + #extraHealers + #extraDps
+    if totalExtras > 0 then
+        local numIncomplete = math.ceil(totalExtras / 5)
+        for i = 1, numIncomplete do
+            incompleteGroups[i] = { tank = nil, healer = nil, dps = {} }
+        end
+        -- Assign extra tanks
+        for i, t in ipairs(extraTanks) do
+            if i <= numIncomplete then
+                incompleteGroups[i].tank = t
+            else
+                table.insert(KS.unassigned, t)
+            end
+        end
+        -- Assign extra healers
+        for i, h in ipairs(extraHealers) do
+            if i <= numIncomplete then
+                incompleteGroups[i].healer = h
+            else
+                table.insert(KS.unassigned, h)
+            end
+        end
+        -- Assign extra DPS (fill slots across incomplete groups)
+        local dIdx = 1
+        for _, g in ipairs(incompleteGroups) do
+            while #g.dps < 3 and dIdx <= #extraDps do
+                table.insert(g.dps, extraDps[dIdx])
+                dIdx = dIdx + 1
+            end
+        end
+        -- Any remaining DPS go to unassigned
+        for i = dIdx, #extraDps do
+            table.insert(KS.unassigned, extraDps[i])
+        end
+    end
 
     -- Merge: locked groups at original positions, new complete groups fill the rest
     wipe(KS.groups)
@@ -131,10 +172,14 @@ function KS.SortGroups()
         end
     end
 
-    -- Create empty group cards based on total raid size
+    -- Add incomplete groups (with members) and empty cards for remaining slots
+    for _, g in ipairs(incompleteGroups) do
+        table.insert(KS.incompleteGroups, g)
+    end
+
     local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
-    local filledGroups = #KS.groups
-    local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - filledGroups)
+    local totalFilled = #KS.groups + #KS.incompleteGroups
+    local emptyGroupsNeeded = math.max(0, totalGroupsNeeded - totalFilled)
     for i = 1, emptyGroupsNeeded do
         table.insert(KS.incompleteGroups, { tank = nil, healer = nil, dps = {} })
     end
@@ -214,28 +259,20 @@ function KS.SortUnassigned()
         table.insert(KS.groups, g)
     end
 
-    -- Remaining unassigned
-    wipe(KS.unassigned)
-    for i = numNew + 1, #tanks do table.insert(KS.unassigned, tanks[i]) end
-    for i = numNew + 1, #healers do table.insert(KS.unassigned, healers[i]) end
+    -- Collect leftover players after complete groups
+    local extraTanks = {}
+    local extraHealers = {}
+    local extraDps = {}
+    for i = numNew + 1, #tanks do table.insert(extraTanks, tanks[i]) end
+    for i = numNew + 1, #healers do table.insert(extraHealers, healers[i]) end
     local dpsUsed = numNew * 3
-    for i = dpsUsed + 1, #dps do table.insert(KS.unassigned, dps[i]) end
+    for i = dpsUsed + 1, #dps do table.insert(extraDps, dps[i]) end
 
-    -- Update empty group cards
-    local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
-    local filledGroups = #KS.groups
-    local nonEmptyIncomplete = 0
-    if KS.incompleteGroups then
-        for _, g in ipairs(KS.incompleteGroups) do
-            local count = 0
-            if g.tank then count = count + 1 end
-            if g.healer then count = count + 1 end
-            count = count + #g.dps
-            if count > 0 then nonEmptyIncomplete = nonEmptyIncomplete + 1 end
-        end
-    end
-    local emptyNeeded = math.max(0, totalGroupsNeeded - filledGroups - nonEmptyIncomplete)
+    -- Form incomplete groups from leftovers
+    wipe(KS.unassigned)
+    local totalExtras = #extraTanks + #extraHealers + #extraDps
     local newIncomplete = {}
+    -- Preserve existing non-empty incomplete groups
     if KS.incompleteGroups then
         for _, g in ipairs(KS.incompleteGroups) do
             local count = 0
@@ -245,6 +282,48 @@ function KS.SortUnassigned()
             if count > 0 then table.insert(newIncomplete, g) end
         end
     end
+
+    if totalExtras > 0 then
+        local numIncomplete = math.ceil(totalExtras / 5)
+        local startIdx = #newIncomplete + 1
+        for i = 1, numIncomplete do
+            newIncomplete[startIdx + i - 1] = { tank = nil, healer = nil, dps = {} }
+        end
+        -- Assign extra tanks
+        for i, t in ipairs(extraTanks) do
+            local gIdx = startIdx + i - 1
+            if gIdx <= #newIncomplete then
+                newIncomplete[gIdx].tank = t
+            else
+                table.insert(KS.unassigned, t)
+            end
+        end
+        -- Assign extra healers
+        for i, h in ipairs(extraHealers) do
+            local gIdx = startIdx + i - 1
+            if gIdx <= #newIncomplete then
+                newIncomplete[gIdx].healer = h
+            else
+                table.insert(KS.unassigned, h)
+            end
+        end
+        -- Assign extra DPS across incomplete groups
+        local dIdx = 1
+        for gi = startIdx, #newIncomplete do
+            while #newIncomplete[gi].dps < 3 and dIdx <= #extraDps do
+                table.insert(newIncomplete[gi].dps, extraDps[dIdx])
+                dIdx = dIdx + 1
+            end
+        end
+        for i = dIdx, #extraDps do
+            table.insert(KS.unassigned, extraDps[i])
+        end
+    end
+
+    -- Add empty cards for remaining slots
+    local totalGroupsNeeded = KS.CalcGroupsNeeded(#KS.roster)
+    local totalFilled = #KS.groups + #newIncomplete
+    local emptyNeeded = math.max(0, totalGroupsNeeded - totalFilled)
     for i = 1, emptyNeeded do
         table.insert(newIncomplete, { tank = nil, healer = nil, dps = {} })
     end
