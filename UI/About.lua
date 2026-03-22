@@ -210,6 +210,10 @@ function KS.CreateAboutView(parent)
     AddSpacer(4)
 
     local changelog = {
+        { version = "3.1.1", entries = {
+            "Fixed locked groups being wiped when sorting (own sync message was being processed)",
+            "Composition warnings now show on locked groups after drag-and-drop",
+        }},
         { version = "3.1.0", entries = {
             "Sort All now forms incomplete groups from leftover players instead of dumping all to unassigned",
             "Sort New also distributes leftovers into incomplete groups",

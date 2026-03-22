@@ -72,7 +72,13 @@ function KS.InitComm()
         if prefix ~= PREFIX then return end
         -- Don't process our own messages
         local myName = UnitName("player")
-        if sender == myName or sender == myName .. "-" .. GetRealmName() then
+        local myRealm = GetRealmName():gsub("%s+", "") -- Remove spaces for comparison
+        if sender == myName or sender == myName .. "-" .. myRealm then
+            return
+        end
+        -- Fallback: compare short names in case realm formatting still differs
+        local senderShort = sender:match("^([^-]+)") or sender
+        if senderShort == myName then
             return
         end
         -- Strip realm from sender name for display

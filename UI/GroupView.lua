@@ -520,7 +520,7 @@ local function CreateGroupCard(parent, groupIdx, group, xOffset, yOffset)
     local isValid = group.tank and group.healer and #group.dps == 3 and not roleMismatch
     local isEmpty = memberCount == 0
 
-    if not isValid and not isEmpty and not group.locked then
+    if not isValid and not isEmpty then
         -- Red border for invalid composition
         card:SetBorderColor(0.6, 0.15, 0.15, 1)
 
