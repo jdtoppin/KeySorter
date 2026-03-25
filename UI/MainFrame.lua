@@ -433,10 +433,27 @@ function KS.CreateMainFrame()
         KS.UpdatePermissionState()
     end)
 
-    -- Apply saved UI scale
-    if KeySorterDB and KeySorterDB.uiScale then
-        f:SetScale(KeySorterDB.uiScale)
+    -- Apply saved UI scale (compensate for parent scale changes, e.g. ElvUI)
+    function KS.ApplyUIScale(scale)
+        scale = scale or KeySorterDB.uiScale or 1.0
+        local parentScale = f:GetParent():GetScale()
+        if parentScale and parentScale > 0 then
+            f:SetScale(scale / parentScale)
+        else
+            f:SetScale(scale)
+        end
     end
+
+    if KeySorterDB and KeySorterDB.uiScale then
+        KS.ApplyUIScale(KeySorterDB.uiScale)
+    end
+
+    -- Re-apply on show to account for addons that modify UIParent scale (e.g. ElvUI)
+    f:HookScript("OnShow", function()
+        if KeySorterDB and KeySorterDB.uiScale then
+            KS.ApplyUIScale(KeySorterDB.uiScale)
+        end
+    end)
 
     SetTabInternal("roster")
 

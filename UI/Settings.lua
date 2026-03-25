@@ -48,13 +48,16 @@ function KS.CreateSettingsView(parent)
     ---------------------------------------------------------------------------
     AddSettingLabel("General", 0, 0.8, 1, "GameFontNormal")
 
-    local scaleSlider = KS.CreateSlider(scrollChild, "UI Scale", 0.5, 2.0, 0.1, 200)
+    local scaleSlider = KS.CreateSlider(scrollChild, "UI Scale", 0.2, 1.5, 0.01, 200)
     scaleSlider:SetPoint("TOPLEFT", 16, y)
+    scaleSlider:SetFormat(function(v) return string.format("%.2f", v) end)
     scaleSlider:SetValue(KeySorterDB.uiScale or 1.0)
     scaleSlider:SetOnChange(function(val)
         KeySorterDB.uiScale = val
-        if KS.mainFrame then
-            KS.mainFrame:SetScale(val)
+    end)
+    scaleSlider:SetOnRelease(function(val)
+        if KS.ApplyUIScale then
+            KS.ApplyUIScale(val)
         end
     end)
     y = y - 48

@@ -143,7 +143,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             KeySorterDB.filterIdx = KeySorterDB.filterIdx or 1
             KeySorterDB.minimapPos = KeySorterDB.minimapPos or 225
             KeySorterDB.ilvlCache = KeySorterDB.ilvlCache or {}
-            KeySorterDB.uiScale = KeySorterDB.uiScale or 1.0
+            KeySorterDB.uiScale = math.max(0.2, math.min(KeySorterDB.uiScale or 1.0, 1.5))
             KeySorterDB.welcomeMsg = KeySorterDB.welcomeMsg or "Welcome to M+ night! We'll be sorting groups shortly. Please stay in the raid."
             KeySorterDB.gatherMsg = KeySorterDB.gatherMsg or "Please gather at Silvermoon by the Weekly Vendors for group sorting!"
             KeySorterDB.notes = KeySorterDB.notes or {}           -- { ["CharName-Realm"] = "note text" }

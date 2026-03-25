@@ -365,9 +365,14 @@ function KS.ShowTooltip(owner, anchor, lines)
     end
     local tip = KS.Tooltip
 
-    -- Match UI scale
-    local scale = KeySorterDB and KeySorterDB.uiScale or 1.0
-    tip:SetScale(scale)
+    -- Match UI scale (compensate for parent scale, e.g. ElvUI)
+    local desiredScale = KeySorterDB and KeySorterDB.uiScale or 1.0
+    local parentScale = tip:GetParent() and tip:GetParent():GetScale() or 1.0
+    if parentScale > 0 then
+        tip:SetScale(desiredScale / parentScale)
+    else
+        tip:SetScale(desiredScale)
+    end
 
     -- Translate anchor: "ANCHOR_RIGHT", "ANCHOR_TOP", etc.
     tip:SetOwner(owner, anchor or "ANCHOR_RIGHT")
@@ -824,7 +829,11 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
         thumb:SetPoint("LEFT", trackFrame, "LEFT", xOff, 0)
         fill:SetWidth(math.max(xOff + thumbW * 0.5, 1))
 
-        valText:SetText(tostring(currentValue))
+        if container._formatFn then
+            valText:SetText(container._formatFn(currentValue))
+        else
+            valText:SetText(tostring(currentValue))
+        end
     end
 
     local function SetValueInternal(val)
@@ -858,6 +867,7 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
             self:SetBackdropColor(0.35, 0.35, 0.35, 1)
             self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
         end
+        if container._onRelease then container._onRelease(currentValue) end
     end)
     thumb:SetScript("OnUpdate", function(self)
         if not self._dragging then return end
@@ -871,6 +881,7 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
         if button == "LeftButton" then
             local mouseX = GetCursorPosition() / self:GetEffectiveScale()
             SetValueInternal(ValueFromMouseX(mouseX))
+            if container._onRelease then container._onRelease(currentValue) end
         end
     end)
 
@@ -881,7 +892,9 @@ function KS.CreateSlider(parent, labelText, minVal, maxVal, step, width)
     valText:SetText(tostring(minVal))
     UpdateVisuals()
 
+    function container:SetFormat(fn) self._formatFn = fn; UpdateVisuals() end
     function container:SetOnChange(fn) self._onChange = fn end
+    function container:SetOnRelease(fn) self._onRelease = fn end
     function container:SetValue(v)
         v = math.floor(v / step + 0.5) * step
         v = math.max(minVal, math.min(v, maxVal))
